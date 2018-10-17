@@ -37,7 +37,7 @@
 #define OzOLED_CMD_DISPLAY_OFF      0xAE
 #define OzOLED_CMD_DISPLAY_ON     0xAF
 #define OzOLED_CMD_NORMAL_DISPLAY   0xA6
-#define OzOLED_CMD_INVERSE_DISPLAY    0xA7
+#define OzOLED_CMD_ROTATE_DISPLAY    0xA7
 #define OzOLED_CMD_SET_BRIGHTNESS   0x81
 
 #define OzOLED_RIGHT_SCROLL       0x26
@@ -242,8 +242,9 @@ public:
   void printChar(char c, byte X=255, byte Y=255);
   void printString(const char *String, byte X=255, byte Y=255, byte numChar=255);
   byte printNumber(long n, byte X=255, byte Y=255);
-  byte printNumber(float float_num, byte prec=6, byte Y=255, byte numChar=255);
-  void printBigNumber(const char *number, byte column=0, byte page=0, byte numChar=255); 
+  byte printNumber(float float_num, byte prec=6, byte Y=255, byte numChar=255);  
+  // void printBigNumber(const char *number, byte column=0, byte page=0, byte numChar=255);
+  void printBigNumber(const char *character, byte startColumn, byte startPage);
   void printBigNumber2(const char *number, byte column=0, byte page=0, byte numChar=255); 
   void printBigNumber3(const char *number, byte column=0, byte page=0, byte numChar=255);
   void printBigNumber4(const char *number, byte column=0, byte page=0, byte startChar=255, byte endChar=255);
@@ -265,7 +266,7 @@ public:
   //void clearPage(byte page);
   
   void setNormalDisplay();
-  void setInverseDisplay();
+  void setRotateDisplay();
   void setPowerOff();
   void setPowerOn();
   void setPageMode();
@@ -279,6 +280,8 @@ public:
   void scrollDiagLeft();
   void setActivateScroll(byte direction, byte startPage, byte endPage, byte scrollSpeed);
   void setDeactivateScroll();
+
+  void setInverseDisplayColor(bool i);
 
 
 
