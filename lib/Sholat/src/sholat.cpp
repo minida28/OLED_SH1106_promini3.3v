@@ -80,11 +80,16 @@ void PrayerTimes::get_prayer_times(int year, int month, int day, double _latitud
 }
 
 /* return prayer times for a given date */
-void PrayerTimes::get_prayer_times(unsigned long date, double latitude, double longitude, double timezone, double times[])
+void PrayerTimes::get_prayer_times(NeoGPS::clock_t _localTime, double latitude, double longitude, double timezone, double times[])
 {
-  RtcDateTime tm;
-  tm = RtcDateTime(date);
-  get_prayer_times(tm.Year(), tm.Month(), tm.Day(), latitude, longitude, timezone, times);
+  NeoGPS::time_t tm;
+  tm = _localTime;
+
+  int year = tm.year + 2000;
+  int month = tm.month;
+  int day = tm.date;
+
+  get_prayer_times(year, month, day, latitude, longitude, timezone, times);
 }
 
 /* set the calculation method  */
@@ -301,10 +306,10 @@ void PrayerTimes::compute_times(double times[])
 void PrayerTimes::compute_day_times(double times[])
 {
   double default_times[] = {5, 6, 12, 13, 18, 18, 18}; // default times
-  for (int i = 0; i < TimesCount; ++i)
+  for (uint8_t i = 0; i < TimesCount; ++i)
     times[i] = default_times[i];
 
-  for (int i = 0; i < NUM_ITERATIONS; ++i)
+  for (uint8_t i = 0; i < NUM_ITERATIONS; ++i)
     compute_times(times);
 
   adjust_times(times);
@@ -313,7 +318,7 @@ void PrayerTimes::compute_day_times(double times[])
 /* adjust times in a prayer time array */
 void PrayerTimes::adjust_times(double times[])
 {
-  for (int i = 0; i < TimesCount; ++i)
+  for (uint8_t i = 0; i < TimesCount; ++i)
     times[i] += timezone - longitude / 15.0;
   times[Dhuhr] += dhuhr_minutes / 60.0;              // Dhuhr
   if (method_params[calc_method].maghrib_is_minutes) // Maghrib
@@ -328,7 +333,7 @@ void PrayerTimes::adjust_times(double times[])
 /* convert hours to day portions  */
 void PrayerTimes::day_portion(double times[])
 {
-  for (int i = 0; i < TimesCount; ++i)
+  for (uint8_t i = 0; i < TimesCount; ++i)
     times[i] /= 24.0;
 }
 
@@ -384,7 +389,7 @@ double PrayerTimes::night_portion(double angle)
 /* set offsets settings */
 void PrayerTimes::tune(double timeOffsets[])
 {
-  for (unsigned int i = 0; i < TimesCount; ++i)
+  for (uint8_t i = 0; i < TimesCount; ++i)
   {
     offset[i] = timeOffsets[i];
   }
@@ -393,7 +398,7 @@ void PrayerTimes::tune(double timeOffsets[])
 /* apply offsets to the times */
 double PrayerTimes::tune_times(double times[])
 {
-  for (unsigned int i = 0; i < TimesCount; ++i)
+  for (uint8_t i = 0; i < TimesCount; ++i)
   {
     times[i] += offset[i] / 60;
   }

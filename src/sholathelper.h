@@ -5,7 +5,7 @@
 #include "sholat.h"
 #include "pgmstring.h"
 #include "locationhelper.h"
-#include "timehelper.h"
+// #include "timehelper.h"
 // #include "progmemmatrix.h"
 // #include <time.h>
 
@@ -30,7 +30,7 @@ extern uint8_t CURRENTTIMEID, NEXTTIMEID;
 
 extern unsigned long nextSholatTime;
 
-extern unsigned long timestampSholatTimesToday[TimesCount];
+extern NeoGPS::clock_t timestampSholatTimesToday[TimesCount];
 
 // extern char bufHOUR[3];
 // extern char bufMINUTE[3];
@@ -42,9 +42,9 @@ extern unsigned long timestampSholatTimesToday[TimesCount];
 
 
 
-char *sholatNameStr(uint8_t id);
-void process_sholat();
-void process_sholat_2nd_stage();
+char *sholatNameStr(NeoGPS::time_t _dtLocal, uint8_t id);
+void process_sholat(NeoGPS::clock_t _localTime);
+void process_sholat_2nd_stage(NeoGPS::clock_t _utcTime, NeoGPS::time_t _dtLocal);
 void ProcessSholatEverySecond();
 
 void SholatLoop();

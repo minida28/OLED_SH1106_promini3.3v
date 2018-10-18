@@ -44,12 +44,12 @@ uint8_t CURRENTTIMEID, NEXTTIMEID;
 unsigned long currentSholatTime = 0;
 unsigned long nextSholatTime = 0;
 
-unsigned long timestampSholatTimesYesterday[TimesCount];
-unsigned long timestampSholatTimesToday[TimesCount];
-unsigned long timestampSholatTimesTomorrow[TimesCount];
-unsigned long timestampPreviousSholatTime;
-unsigned long timestampCurrentSholatTime;
-unsigned long timestampNextSholatTime;
+NeoGPS::clock_t timestampSholatTimesYesterday[TimesCount];
+NeoGPS::clock_t timestampSholatTimesToday[TimesCount];
+NeoGPS::clock_t timestampSholatTimesTomorrow[TimesCount];
+NeoGPS::clock_t timestampPreviousSholatTime;
+NeoGPS::clock_t timestampCurrentSholatTime;
+NeoGPS::clock_t timestampNextSholatTime;
 
 // char sholatTimeYesterdayArray[TimesCount][6];
 // char sholatTimeArray[TimesCount][6];
@@ -57,11 +57,11 @@ unsigned long timestampNextSholatTime;
 
 // char bufCommonSholat[30];
 
-char *sholatNameStr(uint8_t id)
+char *sholatNameStr(NeoGPS::time_t _dtLocal, uint8_t id)
 {
   static char buf[10];
 
-  if (dtLocal.DayOfWeek() == 5 && id == Dhuhr)
+  if (_dtLocal.date == 5 && id == Dhuhr)
   {
     char JUMUAH[] = "JUMAT";
     strcpy(buf, JUMUAH);
@@ -75,10 +75,10 @@ char *sholatNameStr(uint8_t id)
   return buf;
 }
 
-void InnerProcess(unsigned long _localTimeStamp, double _latitude, double _longitude, double _timezone, unsigned long _timestamp[])
+void InnerProcess(NeoGPS::clock_t _localTimeStamp, double _latitude, double _longitude, double _timezone, NeoGPS::clock_t _timestamp[])
 {
   bool DEBUG = 0;
-  
+
   double _timesFloat[TimesCount];
 
   sholat.get_prayer_times(_localTimeStamp, _latitude, _longitude, _timezone, _timesFloat);
@@ -89,15 +89,21 @@ void InnerProcess(unsigned long _localTimeStamp, double _latitude, double _longi
     uint8_t hr, mnt;
     sholat.get_float_time_parts(_timesFloat[i], hr, mnt);
 
-    RtcDateTime tm;
-    tm = RtcDateTime(_localTimeStamp);
+    NeoGPS::time_t tm;
+    tm = _localTimeStamp;
 
-    _timestamp[i] = RtcDateTime(tm.Year(), tm.Month(), tm.Day(), hr, mnt, 0) - TimezoneSeconds();
+    tm.hours = hr;
+    tm.minutes = mnt;
+    tm.seconds = 0;
+
+    int32_t offset = _timezone * NeoGPS::SECONDS_PER_HOUR;
+
+    _timestamp[i] = tm - offset;
 
     //Print all results
     if (DEBUG)
     {
-      char buf[64];
+      char buf[32];
       snprintf_P(buf, sizeof(buf), PSTR("%d\t%02d:%02d  %lu\r\n"),
                  i,
                  //  sholatNameStr(i),
@@ -118,7 +124,7 @@ void InnerProcess(unsigned long _localTimeStamp, double _latitude, double _longi
   }
 }
 
-void process_sholat()
+void process_sholat(NeoGPS::clock_t _localTime)
 {
   DEBUGLOG("\n%s\r\n", __PRETTY_FUNCTION__);
 
@@ -154,16 +160,16 @@ void process_sholat()
   float tZ = configLocation.timezone;
 
   //CALCULATE YESTERDAY'S SHOLAT TIMES
-  InnerProcess(localTime - 86400UL, lat, lon, tZ, timestampSholatTimesYesterday);
+  InnerProcess(_localTime - 86400UL, lat, lon, tZ, timestampSholatTimesYesterday);
 
   // CALCULATE TODAY'S SHOLAT TIMES
-  InnerProcess(localTime, lat, lon, tZ, timestampSholatTimesToday);
+  InnerProcess(_localTime, lat, lon, tZ, timestampSholatTimesToday);
 
   // CALCULATE TOMORROW'S SHOLAT TIMES
-  InnerProcess(localTime + 86400UL, lat, lon, tZ, timestampSholatTimesTomorrow);
+  InnerProcess(_localTime + 86400UL, lat, lon, tZ, timestampSholatTimesTomorrow);
 }
 
-void process_sholat_2nd_stage()
+void process_sholat_2nd_stage(NeoGPS::clock_t _utcTime, NeoGPS::time_t _dtLocal)
 {
   // DEBUGLOG("%s\r\n", __PRETTY_FUNCTION__);
 
@@ -171,7 +177,7 @@ void process_sholat_2nd_stage()
   // char bufMINUTE[3];
   // char bufSECOND[3];
 
-  time_t s_tm = 0;
+  NeoGPS::clock_t s_tm = 0;
 
   // time_t t_utc;
 
@@ -213,9 +219,9 @@ void process_sholat_2nd_stage()
       }
 
       //then
-      time_t timestamp_current_today;
-      time_t timestamp_next_today;
-      time_t timestamp_next_tomorrow;
+      NeoGPS::clock_t timestamp_current_today;
+      NeoGPS::clock_t timestamp_next_today;
+      NeoGPS::clock_t timestamp_next_tomorrow;
 
       timestamp_current_today = timestampSholatTimesToday[tempCurrentID];
 
@@ -227,7 +233,7 @@ void process_sholat_2nd_stage()
 
       if (timestamp_current_today < timestamp_next_today)
       {
-        if (utcTime <= timestamp_current_today && utcTime < timestamp_next_today)
+        if (_utcTime <= timestamp_current_today && _utcTime < timestamp_next_today)
         {
           CURRENTTIMEID = tempPreviousID;
           NEXTTIMEID = tempCurrentID;
@@ -235,7 +241,7 @@ void process_sholat_2nd_stage()
 
           break;
         }
-        else if (utcTime > timestamp_current_today && utcTime <= timestamp_next_today)
+        else if (_utcTime > timestamp_current_today && _utcTime <= timestamp_next_today)
         {
           CURRENTTIMEID = tempCurrentID;
           NEXTTIMEID = tempNextID;
@@ -246,7 +252,7 @@ void process_sholat_2nd_stage()
       }
       else if (timestamp_current_today > timestamp_next_today)
       {
-        if (utcTime >= timestamp_current_today && utcTime < timestamp_next_tomorrow)
+        if (_utcTime >= timestamp_current_today && _utcTime < timestamp_next_tomorrow)
         {
           CURRENTTIMEID = tempCurrentID;
           NEXTTIMEID = tempNextID;
@@ -260,10 +266,10 @@ void process_sholat_2nd_stage()
 
   DEBUGLOG("CURRENTTIMEID=%d, NEXTTIMEID=%d\r\n", CURRENTTIMEID, NEXTTIMEID);
 
-  time_t timestamp_current_yesterday;
-  time_t timestamp_current_today;
-  time_t timestamp_next_today;
-  time_t timestamp_next_tomorrow;
+  NeoGPS::clock_t timestamp_current_yesterday;
+  NeoGPS::clock_t timestamp_current_today;
+  NeoGPS::clock_t timestamp_next_today;
+  NeoGPS::clock_t timestamp_next_tomorrow;
 
   timestamp_current_yesterday = timestampSholatTimesYesterday[CURRENTTIMEID];
   timestamp_current_today = timestampSholatTimesToday[CURRENTTIMEID];
@@ -279,13 +285,13 @@ void process_sholat_2nd_stage()
   }
   else if (NEXTTIMEID < CURRENTTIMEID)
   {
-    if (dtLocal.Hour() >= 12) // is PM ?
+    if (_dtLocal.hours >= 12) // is PM ?
     {
       currentSholatTime = timestamp_current_today;
       nextSholatTime = timestamp_next_tomorrow;
       DEBUGLOG("NEXTTIMEID < CURRENTTIMEID, currentSholatTime=%lu, nextSholatTime=%lu Hour: %d, is PM\r\n", currentSholatTime, nextSholatTime, tm_utc->tm_hour);
     }
-    if (dtLocal.Hour() < 12) // is AM ?
+    if (_dtLocal.hours < 12) // is AM ?
     {
       currentSholatTime = timestamp_current_yesterday;
       nextSholatTime = timestamp_next_today;
@@ -294,12 +300,12 @@ void process_sholat_2nd_stage()
     }
   }
 
-  time_t timeDiff = s_tm - utcTime;
+  NeoGPS::clock_t timeDiff = s_tm - _utcTime;
   DEBUGLOG("s_tm: %lu, now: %lu, timeDiff: %lu\r\n", s_tm, now, timeDiff);
   if (0)
   {
     char buf[64];
-    snprintf_P(buf, sizeof(buf), PSTR("s_tm: %lu, utc: %lu, timeDiff: %lu\r\n"), s_tm, utcTime, timeDiff);
+    snprintf_P(buf, sizeof(buf), PSTR("s_tm: %lu, utc: %lu, timeDiff: %lu\r\n"), s_tm, _utcTime, timeDiff);
     Serial.print(buf);
   }
 
@@ -310,9 +316,9 @@ void process_sholat_2nd_stage()
 
   // // METHOD 2
   // days = elapsedDays(timeDiff);
-  HOUR = numberOfHours(timeDiff);
-  MINUTE = numberOfMinutes(timeDiff);
-  SECOND = numberOfSeconds(timeDiff);
+  // HOUR = numberOfHours(timeDiff);
+  // MINUTE = numberOfMinutes(timeDiff);
+  // SECOND = numberOfSeconds(timeDiff);
 
   // METHOD 3 -> https://stackoverflow.com/questions/2419562/convert-seconds-to-days-minutes-and-seconds/17590511#17590511
   // tm *diff = gmtime(&timeDiff); // convert to broken down time
@@ -322,9 +328,9 @@ void process_sholat_2nd_stage()
   // SECOND = diff->tm_sec;
 
   // METHOD 4 -> https://stackoverflow.com/questions/2419562/convert-seconds-to-days-minutes-and-seconds/2419597#2419597
-  // HOUR = floor(timeDiff / 3600.0);
-  // MINUTE = floor(fmod(timeDiff, 3600.0) / 60.0);
-  // SECOND = fmod(timeDiff, 60.0);
+  HOUR = floor(timeDiff / 3600.0);
+  MINUTE = floor(fmod(timeDiff, 3600.0) / 60.0);
+  SECOND = fmod(timeDiff, 60.0);
 
   // dtostrf(SECOND, 0, 0, bufSECOND);
   // dtostrf(MINUTE, 0, 0, bufMINUTE);
@@ -364,7 +370,7 @@ void process_sholat_2nd_stage()
         }
         PRINT("menuju %s\r\n", sholatNameStr(NEXTTIMEID));
         Serial.print(F("menuju "));
-        Serial.println(sholatNameStr(NEXTTIMEID));
+        Serial.println(sholatNameStr(_dtLocal, NEXTTIMEID));
       }
       else if (HOUR == 0 && MINUTE == 0)
       {
@@ -375,15 +381,15 @@ void process_sholat_2nd_stage()
   }
 }
 
-void ProcessSholatEverySecond()
+void ProcessSholatEverySecond(NeoGPS::clock_t _utcTime, NeoGPS::clock_t _localTime, NeoGPS::time_t _dtLocal)
 {
   // time_t now = time(nullptr);
-  if (utcTime >= nextSholatTime)
+  if (_utcTime >= nextSholatTime)
   {
-    process_sholat();
+    process_sholat(_localTime);
   }
 
-  process_sholat_2nd_stage();
+  process_sholat_2nd_stage(_utcTime, _dtLocal);
 
   static int NEXTTIMEID_old = 100;
 

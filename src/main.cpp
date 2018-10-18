@@ -1,7 +1,7 @@
 #include <Arduino.h>
 
 #include "sholathelper.h"
-#include "timehelper.h"
+// #include "timehelper.h"
 #include "gpshelper.h"
 
 #include <Wire.h>
@@ -59,7 +59,7 @@ void PRINT_EEPROM_SETTINGS()
 
   for (int8_t i = 0; i < varNum; i++)
   {
-    const char *ptr = (char *).pgm_read_word(&(PGM_VAR_EEPROM[i]));
+    const char *ptr = (char *)pgm_read_word(&(PGM_VAR_EEPROM[i]));
     uint8_t len = strlen_P(ptr);
     char var[len + 1];
     strcpy_P(var, ptr);
@@ -118,6 +118,63 @@ void EEPROMsetup()
   configLocation.longitude = EEPROM.readFloat(mem_address_longitude);
 }
 
+//************************//
+// TIME HELPER
+//************************//
+
+/* Useful Constants */
+#define SECS_PER_MIN ((NeoGPS::time_t)(60UL))
+#define SECS_PER_HOUR ((NeoGPS::time_t)(3600UL))
+#define SECS_PER_DAY ((NeoGPS::time_t)(SECS_PER_HOUR * 24UL))
+// #define DAYS_PER_WEEK ((time_t)(7UL))
+#define SECS_PER_WEEK ((time_t)(SECS_PER_DAY * DAYS_PER_WEEK))
+#define SECS_PER_YEAR ((time_t)(SECS_PER_DAY * 365UL)) // TODO: ought to handle leap years
+#define SECS_YR_2000 ((time_t)(946684800UL))           // the time at the start of y2k
+
+/* Useful Macros for getting elapsed time */
+#define numberOfSeconds(_time_) ((_time_) % SECS_PER_MIN)
+#define numberOfMinutes(_time_) (((_time_) / SECS_PER_MIN) % SECS_PER_MIN)
+#define numberOfHours(_time_) (((_time_) % SECS_PER_DAY) / SECS_PER_HOUR)
+#define dayOfWeek(_time_) ((((_time_) / SECS_PER_DAY + 4) % DAYS_PER_WEEK) + 1) // 1 = Sunday
+#define elapsedDays(_time_) ((_time_) / SECS_PER_DAY)                           // this is number of days since Jan 1 1970
+#define elapsedSecsToday(_time_) ((_time_) % SECS_PER_DAY)                      // the number of seconds since last midnight
+// The following macros are used in calculating alarms and assume the clock is set to a date later than Jan 1 1971
+// Always set the correct time before settting alarms
+#define previousMidnight(_time_) (((_time_) / SECS_PER_DAY) * SECS_PER_DAY)                               // time at the start of the given day
+#define nextMidnight(_time_) (previousMidnight(_time_) + SECS_PER_DAY)                                    // time at the end of the given day
+#define elapsedSecsThisWeek(_time_) (elapsedSecsToday(_time_) + ((dayOfWeek(_time_) - 1) * SECS_PER_DAY)) // note that week starts on day 1
+#define previousSunday(_time_) ((_time_)-elapsedSecsThisWeek(_time_))                                     // time at the start of the week for the given time
+#define nextSunday(_time_) (previousSunday(_time_) + SECS_PER_WEEK)                                       // time at the end of the week for the given time
+
+/* Useful Macros for converting elapsed time to a time_t */
+#define minutesToTime_t ((M))((M)*SECS_PER_MIN)
+#define hoursToTime_t ((H))((H)*SECS_PER_HOUR)
+#define daysToTime_t ((D))((D)*SECS_PER_DAY) // fixed on Jul 22 2011
+#define weeksToTime_t ((W))((W)*SECS_PER_WEEK)
+
+
+NeoGPS::clock_t utcTime;
+NeoGPS::clock_t localTime;
+NeoGPS::clock_t lastBoot;
+
+NeoGPS::time_t dtUtc;
+NeoGPS::time_t dtLocal;
+
+int32_t TimezoneMinutes()
+{
+    return configLocation.timezone * 60;
+}
+
+int32_t TimezoneSeconds()
+{
+    return TimezoneMinutes() * 60;
+}
+
+
+//************************//
+// ENCODER
+//************************//
+
 // #define ENCODER_DO_NOT_USE_INTERRUPTS
 #include <Encoder.h>
 Encoder myEnc(3, 4);
@@ -135,7 +192,7 @@ void DEBUG(const char *fmt, ...)
   Serial.print(tmp);
 }
 
-time_t prevDisplay = 0; // when the digital clock was displayed
+unsigned long prevDisplay = 0; // when the digital clock was displayed
 
 uint8_t h, m, s;
 
@@ -502,13 +559,13 @@ double haversine(double lat1, double lon1, double lat2, double lon2)
 
 void ProcessTimestamp(unsigned long _utc)
 {
-  dtUtc = RtcDateTime(_utc);
+  dtUtc = _utc;
   localTime = _utc + TimezoneSeconds();
-  dtLocal = RtcDateTime(localTime);
+  dtLocal = localTime;
 
-  s = dtLocal.Second();
-  h = dtLocal.Hour();
-  m = dtLocal.Minute();
+  s = dtLocal.seconds;
+  h = dtLocal.hours;
+  m = dtLocal.minutes;
 }
 
 void setup()
@@ -614,6 +671,7 @@ void setup()
     if (1)
     {
       utcTime = fix.dateTime;
+      lastBoot = utcTime - millis()/1000;
 
       ProcessTimestamp(utcTime);
 
@@ -623,8 +681,8 @@ void setup()
         // configLocation.longitude = fix.longitude();
       }
 
-      process_sholat();
-      process_sholat_2nd_stage();
+      process_sholat(localTime);
+      process_sholat_2nd_stage(utcTime, dtLocal);
     }
   }
 
@@ -676,7 +734,7 @@ void ConstructClockPage()
   snprintf_P(buf, sizeof(buf), PSTR("%2d:%02d:%02d"), h, m, s);
   OzOled.printBigNumber(buf, 0, 2);
 
-  snprintf_P(buf, sizeof(buf), PSTR("%-7s   %2dh%2dm"), sholatNameStr(NEXTTIMEID), ceilHOUR, ceilMINUTE);
+  snprintf_P(buf, sizeof(buf), PSTR("%-7s   %2dh%2dm"), sholatNameStr(dtLocal, NEXTTIMEID), ceilHOUR, ceilMINUTE);
   OzOled.drawFont8(buf, 0, 7);
 }
 
@@ -784,13 +842,13 @@ void ConstructSholatTimePage()
 
       unsigned long tempTimestamp = timestampSholatTimesToday[i] + TimezoneSeconds();
 
-      RtcDateTime tm;
-      tm = RtcDateTime(tempTimestamp);
+      NeoGPS::time_t tm;
+      tm = tempTimestamp;
 
-      hr = tm.Hour();
-      mnt = tm.Minute();
+      hr = tm.hours;
+      mnt = tm.minutes;
 
-      snprintf_P(temp, sizeof(temp), PSTR(" %-7s: %02d:%02d"), sholatNameStr(i), hr, mnt);
+      snprintf_P(temp, sizeof(temp), PSTR(" %-7s: %02d:%02d"), sholatNameStr(dtLocal, i), hr, mnt);
 
       int x = i;
       if (i > 4)
@@ -798,6 +856,7 @@ void ConstructSholatTimePage()
       OzOled.drawFont8(temp, 0, 2 + x);
     }
   }
+  Serial.println();
 
   //menu text
   // OzOled.drawFont8("Alarm     ", 0, 7);
@@ -817,17 +876,24 @@ void ConstructUptimePage()
   if (1)
   {
     // uptime strings
-    unsigned long uptime = millis() / 1000;
+    uint32_t uptime = utcTime - lastBoot;
+
+    NeoGPS::time_t dtUptime = uptime;
 
     uint16_t days;
     uint8_t hours;
     uint8_t minutes;
     uint8_t seconds;
 
-    days = elapsedDays(uptime);
-    hours = numberOfHours(uptime);
-    minutes = numberOfMinutes(uptime);
-    seconds = numberOfSeconds(uptime);
+    // days = elapsedDays(uptime);
+    // hours = numberOfHours(uptime);
+    // minutes = numberOfMinutes(uptime);
+    // seconds = numberOfSeconds(uptime);
+
+    days = uptime / (3600UL * 24UL);
+    hours = dtUptime.hours;
+    minutes = dtUptime.minutes;
+    seconds = dtUptime.seconds;
 
     snprintf_P(buf, sizeof(buf), PSTR("%u days"), days);
     len = strlen(buf);
@@ -1042,7 +1108,7 @@ void loop()
 
   // process praytime
   static uint8_t monthDay_old = 254;
-  uint8_t monthDay = dtLocal.Day();
+  uint8_t monthDay = dtLocal.date;
   if (monthDay != monthDay_old)
   {
     monthDay_old = monthDay;
@@ -1052,13 +1118,13 @@ void loop()
   if (processSholatFlag)
   {
     processSholatFlag = false;
-    process_sholat();
-    process_sholat_2nd_stage();
+    process_sholat(localTime);
+    process_sholat_2nd_stage(utcTime, dtLocal);
   }
 
   if (tick1000ms)
   {
-    process_sholat_2nd_stage();
+    process_sholat_2nd_stage(utcTime, dtLocal);
   }
 
   static uint8_t page_old = PageCount;
@@ -1108,9 +1174,9 @@ void loop()
   {
     char buf[17];
     snprintf_P(buf, sizeof(buf), PSTR("%d-%d-%d SAT%2d"),
-               dtLocal.Day(),
-               dtLocal.Month(),
-               dtLocal.Year(),
+               dtLocal.date,
+               dtLocal.month,
+               dtLocal.year,
                fix.satellites);
 
     static int x = 127;

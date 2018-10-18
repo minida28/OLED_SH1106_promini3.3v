@@ -42,7 +42,8 @@
 
 #include "Arduino.h"
 // #include <TimeLib.h>
-#include <RtcDS3231.h>
+// #include <RtcDS3231.h>
+#include <NMEAGPS.h>
 // #include <time.h> 
 // #include <Time.h>
 // #include <cstdio>
@@ -188,7 +189,7 @@ public:
               double dhuhr_minutes = 0);
 
   void get_prayer_times(int year, int month, int day, double _latitude, double _longitude, double _timezone, double times[]);
-  void get_prayer_times(unsigned long date, double latitude, double longitude, double timezone, double times[]);
+  void get_prayer_times(NeoGPS::clock_t date, double latitude, double longitude, double timezone, double times[]);
   static void get_float_time_parts(double time, uint8_t &hours, uint8_t &minutes);
   void set_calc_method(CalculationMethod method_id);
   void set_asr_method(JuristicMethod method_id);
