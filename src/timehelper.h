@@ -3,7 +3,8 @@
 
 #include <Arduino.h>
 // #include "gpshelper.h"
-#include <time.h>
+// #include <time.h>
+#include <RtcDS3231.h>
 // #include <sys/time.h>  // struct timeval
 // #include <coredecls.h> // settimeofday_cb()
 // #include "rtchelper.h"
@@ -29,47 +30,47 @@ typedef unsigned long time_t;
 // nothing too terrible will result from overriding the C library header?!
 extern "C++"
 {
-  typedef enum
-  {
-    timeNotSet,
-    timeNeedsSync,
-    timeSet
-  } timeStatus_t;
+    typedef enum
+    {
+        timeNotSet,
+        timeNeedsSync,
+        timeSet
+    } timeStatus_t;
 
-  typedef enum
-  {
-    dowInvalid,
-    dowSunday,
-    dowMonday,
-    dowTuesday,
-    dowWednesday,
-    dowThursday,
-    dowFriday,
-    dowSaturday
-  } timeDayOfWeek_t;
+    typedef enum
+    {
+        dowInvalid,
+        dowSunday,
+        dowMonday,
+        dowTuesday,
+        dowWednesday,
+        dowThursday,
+        dowFriday,
+        dowSaturday
+    } timeDayOfWeek_t;
 
-  typedef enum
-  {
-    tmSecond,
-    tmMinute,
-    tmHour,
-    tmWday,
-    tmDay,
-    tmMonth,
-    tmYear,
-    tmNbrFields
-  } tmByteFields;
+    typedef enum
+    {
+        tmSecond,
+        tmMinute,
+        tmHour,
+        tmWday,
+        tmDay,
+        tmMonth,
+        tmYear,
+        tmNbrFields
+    } tmByteFields;
 
-  typedef struct
-  {
-    uint8_t Second;
-    uint8_t Minute;
-    uint8_t Hour;
-    uint8_t Wday; // day of week, sunday is day 1
-    uint8_t Day;
-    uint8_t Month;
-    uint8_t Year; // offset from 1970;
-  } tmElements_t, TimeElements, *tmElementsPtr_t;
+    typedef struct
+    {
+        uint8_t Second;
+        uint8_t Minute;
+        uint8_t Hour;
+        uint8_t Wday; // day of week, sunday is day 1
+        uint8_t Day;
+        uint8_t Month;
+        uint8_t Year; // offset from 1970;
+    } tmElements_t, TimeElements, *tmElementsPtr_t;
 
 //convenience macros to convert to and from tm years
 #define tmYearToCalendar(Y) ((Y) + 1970) // full four digit year
@@ -77,7 +78,7 @@ extern "C++"
 #define tmYearToY2k(Y) ((Y)-30) // offset is from 2000
 #define y2kYearToTm(Y) ((Y) + 30)
 
-  typedef time_t (*getExternalTime)();
+    typedef time_t (*getExternalTime)();
 //typedef void  (*setExternalTime)(const time_t); // not used in this version
 
 /*==============================================================================*/
@@ -85,7 +86,7 @@ extern "C++"
 #define SECS_PER_MIN ((time_t)(60UL))
 #define SECS_PER_HOUR ((time_t)(3600UL))
 #define SECS_PER_DAY ((time_t)(SECS_PER_HOUR * 24UL))
-#define DAYS_PER_WEEK ((time_t)(7UL))
+// #define DAYS_PER_WEEK ((time_t)(7UL))
 #define SECS_PER_WEEK ((time_t)(SECS_PER_DAY * DAYS_PER_WEEK))
 #define SECS_PER_YEAR ((time_t)(SECS_PER_DAY * 365UL)) // TODO: ought to handle leap years
 #define SECS_YR_2000 ((time_t)(946684800UL))           // the time at the start of y2k
@@ -111,73 +112,77 @@ extern "C++"
 #define daysToTime_t ((D))((D)*SECS_PER_DAY) // fixed on Jul 22 2011
 #define weeksToTime_t ((W))((W)*SECS_PER_WEEK)
 
-/* date strings */ 
+/* date strings */
 #define dt_MAX_STRING_LEN 9 // length of longest date string (excluding terminating null)
-char* monthStr(uint8_t month);
-char* dayStr(uint8_t day);
-char* monthShortStr(uint8_t month);
-char* dayShortStr(uint8_t day);
+    char *monthStr(uint8_t month);
+    char *dayStr(uint8_t day);
+    char *monthShortStr(uint8_t month);
+    char *dayShortStr(uint8_t day);
 
-  // for testing purpose:
-  // extern "C" int clock_gettime(clockid_t unused, struct timespec *tp);
+    // for testing purpose:
+    // extern "C" int clock_gettime(clockid_t unused, struct timespec *tp);
 
-  // extern bool tick1000ms;
-  // extern bool tick3000ms;
-  // extern bool state500ms;
+    // extern bool tick1000ms;
+    // extern bool tick3000ms;
+    // extern bool state500ms;
 
-  // extern bool timeSetFlag;
+    // extern bool timeSetFlag;
 
-  extern time_t utcTime;
-  extern time_t localTime;
-  // extern uint32_t lastSync; ///< Stored time of last successful sync
-  // extern uint32_t _firstSync; ///< Stored time of first successful sync after boot
-  // extern uint32_t _lastBoot;
+    extern unsigned long utcTime;
+    extern unsigned long localTime;
 
-  typedef struct
-  {
-    // float timezone = 7.0;
-    bool dst = false;
-    // bool enablentp = true;
-    // char ntpserver_0[48] = "0.id.pool.ntp.org";
-    // char ntpserver_1[48] = "0.asia.pool.ntp.org";
-    // char ntpserver_2[48] = "192.168.10.1";
-    // bool enablertc = true;
-    uint32_t syncinterval = 600;
-  } strConfigTime;
-  extern strConfigTime configTime;
+    extern RtcDateTime dtUtc;
+    extern RtcDateTime dtLocal;
+    // extern uint32_t lastSync; ///< Stored time of last successful sync
+    // extern uint32_t _firstSync; ///< Stored time of first successful sync after boot
+    // extern uint32_t _lastBoot;
 
-  typedef enum timeSource
-  {
-    TIMESOURCE_NOT_AVAILABLE,
-    TIMESOURCE_NTP,
-    TIMESOURCE_RTC
-  } strTimeSource;
-  extern strTimeSource timeSource;
+    typedef struct
+    {
+        // float timezone = 7.0;
+        bool dst = false;
+        // bool enablentp = true;
+        // char ntpserver_0[48] = "0.id.pool.ntp.org";
+        // char ntpserver_1[48] = "0.asia.pool.ntp.org";
+        // char ntpserver_2[48] = "192.168.10.1";
+        // bool enablertc = true;
+        uint32_t syncinterval = 600;
+    } strConfigTime;
+    extern strConfigTime configTime;
 
-  float TimezoneFloat();
-  int32_t TimezoneMinutes();
-  int32_t TimezoneSeconds();
+    typedef enum timeSource
+    {
+        TIMESOURCE_NOT_AVAILABLE,
+        TIMESOURCE_NTP,
+        TIMESOURCE_RTC
+    } strTimeSource;
+    extern strTimeSource timeSource;
 
-  char *getDateStr(time_t rawtime);
-  char *getTimeStr(time_t rawtime);
-  char *getDateTimeStr(uint32_t moment);
-  // char *GetRtcDateTimeStr(const RtcDateTime &dt);
-  char *getLastBootStr();
-  char *getUptimeStr();
-  char *getLastSyncStr();
-  char *getNextSyncStr();
+    float TimezoneFloat();
+    long TimezoneMinutes();
+    long TimezoneSeconds();
 
-  /* date strings */
-  // #define dt_MAX_STRING_LEN 9 // length of longest date string (excluding terminating null)
-  char *monthStr(uint8_t month);
-  char *dayStr(uint8_t day);
-  char *monthShortStr(uint8_t month);
-  char *dayShortStr(uint8_t day);
+    char *getDateStr(time_t rawtime);
+    char *getTimeStr(time_t rawtime);
+    char *getDateTimeStr(uint32_t moment);
+    // char *GetRtcDateTimeStr(const RtcDateTime &dt);
+    char *getLastBootStr();
+    char *getUptimeStr();
+    char *getLastSyncStr();
+    char *getNextSyncStr();
 
-  time_t tmConvert_t(int YYYY, byte MM, byte DD, byte hh, byte mm, byte ss);
-  // unsigned long tmConvert_t(int YYYY, byte MM, byte DD, byte hh, byte mm, byte ss);
+    /* date strings */
+    // #define dt_MAX_STRING_LEN 9 // length of longest date string (excluding terminating null)
+    char *monthStr(uint8_t month);
+    char *dayStr(uint8_t day);
+    char *monthShortStr(uint8_t month);
+    char *dayShortStr(uint8_t day);
 
-  void TimeSetup();
-  void TimeLoop();
+    unsigned long tmConvert_t(int YYYY, byte MM, byte DD, byte hh, byte mm, byte ss);
+    // unsigned long tmConvert_t(int YYYY, byte MM, byte DD, byte hh, byte mm, byte ss);
+
+    void TimeSetup();
+    void TimeLoop();
 } // extern "C++"
+
 #endif

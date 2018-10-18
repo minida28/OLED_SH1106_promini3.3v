@@ -1,6 +1,6 @@
 #include "gpshelper.h"
 
-#include <NMEAGPS.h>
+// #include <NMEAGPS.h>
 #include <GPSport.h>
 
 NMEAGPS gps; // This parses the GPS characters
@@ -10,22 +10,22 @@ NeoGPS::Location_t EighteenOfficePark(-6.299227, 106.8319975);
 
 bool echoing;
 
-bool validGPSstatusFlag;
-bool validGPSsatellitesFlag;
-bool validGPStimeFlag;
-bool validGPSdateFlag;
-bool validGPSlocationFlag;
+// bool validGPSstatusFlag;
+// bool validGPSsatellitesFlag;
+// bool validGPStimeFlag;
+// bool validGPSdateFlag;
+// bool validGPSlocationFlag;
 // bool validGPSaltitudeFlag;
-bool validGPSspeedFlag;
+// bool validGPSspeedFlag;
 bool parseGPScompleted;
 
-uint32_t GPStimestamp;
-uint8_t GPSfixStatus;
-uint8_t GPSsatellites;
-double GPSlatitude;
-double GPSlongitude;
-double GPSaltitude;
-double GPSspeedKph;
+// uint32_t GPStimestamp;
+// uint8_t GPSfixStatus;
+// uint8_t GPSsatellites;
+// double GPSlatitude;
+// double GPSlongitude;
+// double GPSaltitude;
+// double GPSspeedKph;
 double distanceKm;
 
 // uint8_t ledPin = 13;
@@ -184,66 +184,66 @@ void processGPS()
 {
     parseGPScompleted = true;
 
-    validGPSstatusFlag = fix.valid.status;
-    validGPSdateFlag = fix.valid.date;
-    validGPStimeFlag = fix.valid.time;
-    validGPSlocationFlag = fix.valid.location;
+    // validGPSstatusFlag = fix.valid.status;
+    // validGPSdateFlag = fix.valid.date;
+    // validGPStimeFlag = fix.valid.time;
+    // validGPSlocationFlag = fix.valid.location;
     // validGPSaltitudeFlag = fix.valid.altitude;
-    validGPSspeedFlag = fix.valid.speed;
-    validGPSsatellitesFlag = fix.valid.satellites;
+    // validGPSspeedFlag = fix.valid.speed;
+    // validGPSsatellitesFlag = fix.valid.satellites;
 
-    if (fix.valid.status)
-    {
-        GPSfixStatus = fix.status;
-    }
+    // if (fix.valid.status)
+    // {
+    //     GPSfixStatus = fix.status;
+    // }
 
-    if (fix.valid.satellites)
-    {
-        GPSsatellites = fix.satellites;
-    }
+    // if (fix.valid.satellites)
+    // {
+    //     GPSsatellites = fix.satellites;
+    // }
 
-    if (fix.valid.date && fix.valid.time)
-    {
+    // if (fix.valid.date && fix.valid.time)
+    // {
 
-        GPStimestamp = fix.dateTime;
-    }
+    //     GPStimestamp = fix.dateTime;
+    // }
 
-    if (fix.valid.location)
-    {
-        GPSlatitude = fix.latitude();
-        GPSlongitude = fix.longitude();
+    // if (fix.valid.location)
+    // {
+    //     GPSlatitude = fix.latitude();
+    //     GPSlongitude = fix.longitude();
 
-        // distanceKm = haversine(fix.latitude(), fix.longitude(), EighteenOfficePark.latF(), EighteenOfficePark.lonF()) / 1000UL;
+    //     // distanceKm = haversine(fix.latitude(), fix.longitude(), EighteenOfficePark.latF(), EighteenOfficePark.lonF()) / 1000UL;
         
 
-        // distance = fix.location.DistanceKm(EighteenOfficePark);
-        // or distance = NeoGPS::Location_t::DistanceKm( fix.location, EighteenOfficePark );
-        // Serial.print( dist );
-        // Serial.println( F(" km") );
+    //     // distance = fix.location.DistanceKm(EighteenOfficePark);
+    //     // or distance = NeoGPS::Location_t::DistanceKm( fix.location, EighteenOfficePark );
+    //     // Serial.print( dist );
+    //     // Serial.println( F(" km") );
 
-        // NeoGPS::Location_t madrid(-6.2759328, 106.8679153);
-        // distance = haversine(fix.latitude(), fix.longitude(), -6.299227, 106.8319975)/1000UL;
-    }
+    //     // NeoGPS::Location_t madrid(-6.2759328, 106.8679153);
+    //     // distance = haversine(fix.latitude(), fix.longitude(), -6.299227, 106.8319975)/1000UL;
+    // }
 
     // if (fix.valid.altitude)
     // {
     //     GPSaltitude = fix.altitude();
     // }
 
-    if (fix.valid.speed)
-    {
-        GPSspeedKph = fix.speed_kph();
-    }
+    // if (fix.valid.speed)
+    // {
+    //     GPSspeedKph = fix.speed_kph();
+    // }
 }
 
 void GPSLoop()
 {
-    validGPSstatusFlag = false;
-    validGPSdateFlag = false;
-    validGPStimeFlag = false;
-    validGPSlocationFlag = false;
+    // validGPSstatusFlag = false;
+    // validGPSdateFlag = false;
+    // validGPStimeFlag = false;
+    // validGPSlocationFlag = false;
     //   validGPSaltitudeFlag = false;
-    validGPSsatellitesFlag = false;
+    // validGPSsatellitesFlag = false;
 
     static bool displayingHex = false;
 

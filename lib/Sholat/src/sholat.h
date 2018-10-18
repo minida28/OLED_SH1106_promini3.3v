@@ -41,7 +41,9 @@
 #define sholat_h
 
 #include "Arduino.h"
-#include <time.h> 
+// #include <TimeLib.h>
+#include <RtcDS3231.h>
+// #include <time.h> 
 // #include <Time.h>
 // #include <cstdio>
 // #include <cmath>
@@ -186,7 +188,7 @@ public:
               double dhuhr_minutes = 0);
 
   void get_prayer_times(int year, int month, int day, double _latitude, double _longitude, double _timezone, double times[]);
-  void get_prayer_times(time_t date, double latitude, double longitude, double timezone, double times[]);
+  void get_prayer_times(unsigned long date, double latitude, double longitude, double timezone, double times[]);
   static void get_float_time_parts(double time, uint8_t &hours, uint8_t &minutes);
   void set_calc_method(CalculationMethod method_id);
   void set_asr_method(JuristicMethod method_id);
@@ -197,17 +199,17 @@ public:
   void set_dhuhr_minutes(double minutes);
   void set_maghrib_minutes(double minutes);
   void set_isha_minutes(double minutes);
-  const char *float_time_to_time24(double time);
-  const char *float_time_to_time12(double time, bool no_suffix = false);
-  const char *float_time_to_time12ns(double time);
-  static double get_effective_timezone(unsigned long local_time);
-  static double get_effective_timezone(int year, int month, int day);
+  // const char *float_time_to_time24(double time);
+  // const char *float_time_to_time12(double time, bool no_suffix = false);
+  // const char *float_time_to_time12ns(double time);
+  // static double get_effective_timezone(unsigned long local_time);
+  // static double get_effective_timezone(int year, int month, int day);
   static double time_diff(double time1, double time2);
   // double times[TimesCount];
   // double timesYesterday[TimesCount];
   // double timesTomorrow[TimesCount];
-  const char *two_digits_format(int num);
-  const char *int_to_string(int num);
+  // const char *two_digits_format(int num);
+  // const char *int_to_string(int num);
   // uint32_t timestampSholatTimesYesterday[TimesCount];
   // uint32_t timestampSholatTimesToday[TimesCount];
   // uint32_t timestampSholatTimesTomorrow[TimesCount];

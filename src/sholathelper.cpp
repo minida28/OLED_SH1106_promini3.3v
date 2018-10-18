@@ -1,7 +1,7 @@
 #include <Arduino.h>
 #include "sholat.h"
 #include "sholathelper.h"
-#include "timehelper.h"
+// #include "timehelper.h"
 // #include "locationhelper.h"
 // #include "progmemmatrix.h"
 #include <time.h>
@@ -41,15 +41,15 @@ uint8_t CURRENTTIMEID, NEXTTIMEID;
 // char bufMINUTE[3];
 // char bufSECOND[3];
 
-time_t currentSholatTime = 0;
-time_t nextSholatTime = 0;
+unsigned long currentSholatTime = 0;
+unsigned long nextSholatTime = 0;
 
-uint32_t timestampSholatTimesYesterday[TimesCount];
-uint32_t timestampSholatTimesToday[TimesCount];
-uint32_t timestampSholatTimesTomorrow[TimesCount];
-uint32_t timestampPreviousSholatTime;
-uint32_t timestampCurrentSholatTime;
-uint32_t timestampNextSholatTime;
+unsigned long timestampSholatTimesYesterday[TimesCount];
+unsigned long timestampSholatTimesToday[TimesCount];
+unsigned long timestampSholatTimesTomorrow[TimesCount];
+unsigned long timestampPreviousSholatTime;
+unsigned long timestampCurrentSholatTime;
+unsigned long timestampNextSholatTime;
 
 // char sholatTimeYesterdayArray[TimesCount][6];
 // char sholatTimeArray[TimesCount][6];
@@ -60,9 +60,8 @@ uint32_t timestampNextSholatTime;
 char *sholatNameStr(uint8_t id)
 {
   static char buf[10];
-  struct tm *tm_local = localtime(&utcTime);
 
-  if (tm_local->tm_wday == 5 && id == Dhuhr)
+  if (dtLocal.DayOfWeek() == 5 && id == Dhuhr)
   {
     char JUMUAH[] = "JUMAT";
     strcpy(buf, JUMUAH);
@@ -76,8 +75,10 @@ char *sholatNameStr(uint8_t id)
   return buf;
 }
 
-void InnerProcess(time_t _localTimeStamp, double _latitude, double _longitude, double _timezone, uint32_t _timestamp[])
+void InnerProcess(unsigned long _localTimeStamp, double _latitude, double _longitude, double _timezone, unsigned long _timestamp[])
 {
+  bool DEBUG = 0;
+  
   double _timesFloat[TimesCount];
 
   sholat.get_prayer_times(_localTimeStamp, _latitude, _longitude, _timezone, _timesFloat);
@@ -88,18 +89,13 @@ void InnerProcess(time_t _localTimeStamp, double _latitude, double _longitude, d
     uint8_t hr, mnt;
     sholat.get_float_time_parts(_timesFloat[i], hr, mnt);
 
-    struct tm *tm;
-    tm = gmtime(&_localTimeStamp);
+    RtcDateTime tm;
+    tm = RtcDateTime(_localTimeStamp);
 
-    tm->tm_hour = hr;
-    tm->tm_min = mnt;
-    tm->tm_sec = 0;
-
-    //store to timestamp array
-    _timestamp[i] = mktime(tm) - TimezoneSeconds();
+    _timestamp[i] = RtcDateTime(tm.Year(), tm.Month(), tm.Day(), hr, mnt, 0) - TimezoneSeconds();
 
     //Print all results
-    if (0)
+    if (DEBUG)
     {
       char buf[64];
       snprintf_P(buf, sizeof(buf), PSTR("%d\t%02d:%02d  %lu\r\n"),
@@ -116,7 +112,7 @@ void InnerProcess(time_t _localTimeStamp, double _latitude, double _longitude, d
       //Therefore, float or double must be converted to string first. For this case I've used dtosrf to achive that.
     }
   }
-  if (0)
+  if (DEBUG)
   {
     Serial.println();
   }
@@ -283,16 +279,13 @@ void process_sholat_2nd_stage()
   }
   else if (NEXTTIMEID < CURRENTTIMEID)
   {
-    // time_t t_utc = time(nullptr);
-    struct tm *tm_local= gmtime(&localTime);
-
-    if (tm_local->tm_hour >= 12) // is PM ?
+    if (dtLocal.Hour() >= 12) // is PM ?
     {
       currentSholatTime = timestamp_current_today;
       nextSholatTime = timestamp_next_tomorrow;
       DEBUGLOG("NEXTTIMEID < CURRENTTIMEID, currentSholatTime=%lu, nextSholatTime=%lu Hour: %d, is PM\r\n", currentSholatTime, nextSholatTime, tm_utc->tm_hour);
     }
-    if (tm_local->tm_hour < 12) // is AM ?
+    if (dtLocal.Hour() < 12) // is AM ?
     {
       currentSholatTime = timestamp_current_yesterday;
       nextSholatTime = timestamp_next_today;

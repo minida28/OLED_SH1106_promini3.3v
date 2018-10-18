@@ -59,7 +59,7 @@ void PRINT_EEPROM_SETTINGS()
 
   for (int8_t i = 0; i < varNum; i++)
   {
-    const char *ptr = (char *)pgm_read_word(&(PGM_VAR_EEPROM[i]));
+    const char *ptr = (char *).pgm_read_word(&(PGM_VAR_EEPROM[i]));
     uint8_t len = strlen_P(ptr);
     char var[len + 1];
     strcpy_P(var, ptr);
@@ -422,6 +422,9 @@ void TestTone()
   }
 }
 
+bool processSholatFlag = false;
+bool processSholat2ndStageFlag = false;
+
 bool tick500ms = LOW;
 bool ledState = LOW;
 volatile bool switchPinFlag = 0;
@@ -431,8 +434,6 @@ volatile unsigned long switchPinMillis = 0;
 
 volatile bool switchPinToggled = 0;
 volatile bool switchPinHold = 0;
-
-struct tm *dtLocal;
 
 void SwitchPinISR(void)
 {
@@ -498,6 +499,17 @@ double haversine(double lat1, double lon1, double lat2, double lon2)
 //     tone(_buzzerPin, freq, _duration);
 //   }
 // }
+
+void ProcessTimestamp(unsigned long _utc)
+{
+  dtUtc = RtcDateTime(_utc);
+  localTime = _utc + TimezoneSeconds();
+  dtLocal = RtcDateTime(localTime);
+
+  s = dtLocal.Second();
+  h = dtLocal.Hour();
+  m = dtLocal.Minute();
+}
 
 void setup()
 {
@@ -571,7 +583,7 @@ void setup()
     snprintf_P(buf, sizeof(buf), PSTR("Waiting GPS"));
     OzOled.drawFont8(buf, 0, 0);
     unsigned long start;
-    while (!validGPSdateFlag && !validGPStimeFlag)
+    while (!fix.valid.date && !fix.valid.time)
     {
       if (millis() - start >= 1000)
       {
@@ -601,317 +613,25 @@ void setup()
 
     if (1)
     {
-      utcTime = GPStimestamp;
-      struct tm *timeinfo;
-      timeinfo = gmtime(&utcTime);
+      utcTime = fix.dateTime;
 
-      mktime(timeinfo);
-      localTime = utcTime + TimezoneSeconds();
+      ProcessTimestamp(utcTime);
 
-      dtLocal = localtime(&localTime);
+      if (fix.valid.location)
+      {
+        // configLocation.latitude = fix.latitude();
+        // configLocation.longitude = fix.longitude();
+      }
 
-      s = dtLocal->tm_sec;
-      h = dtLocal->tm_hour;
-      m = dtLocal->tm_min;
-
-      // if (validGPSlocationFlag)
-      // {
-      //   configLocation.latitude = GPSlatitude;
-      //   configLocation.longitude = GPSlongitude;
-      // }
-
-      // process_sholat();
-      // process_sholat_2nd_stage();
+      process_sholat();
+      process_sholat_2nd_stage();
     }
   }
 
-  // utcTime = 592953110;
-
-  if (0)
-  {
-    char buf[17];
-    int len;
-    int8_t x;
-
-    borderLine('5');
-
-    delay(1000);
-
-    snprintf_P(buf, sizeof(buf), PSTR("               "));
-    len = strlen(buf);
-    len = len * 8;
-    x = (128 - len) / 2;
-    OzOled.drawFont8(buf, x, 0);
-
-    snprintf_P(buf, sizeof(buf), PSTR("TESTING"));
-    len = strlen(buf);
-    len = len * 8;
-    x = (128 - len) / 2;
-    OzOled.drawFont8(buf, x, 0);
-    OzOled.drawLogo2("01", 2, 64, 3, 2, 3);
-
-    delay(2000);
-
-    //change MULTIPLEX
-    snprintf_P(buf, sizeof(buf), PSTR("MULTIPLEX"));
-    len = strlen(buf);
-    len = len * 8;
-    x = (128 - len) / 2;
-    OzOled.drawFont8(buf, x, 0);
-
-    OzOled.sendCommand(0xA8);
-    OzOled.sendCommand(0x3F + 5);
-
-    delay(2000);
-
-    OzOled.sendCommand(0xA8);
-    OzOled.sendCommand(0x3F);
-
-    delay(2000);
-
-    //change OFFSET
-    snprintf_P(buf, sizeof(buf), PSTR("               "));
-    len = strlen(buf);
-    len = len * 8;
-    x = (128 - len) / 2;
-    OzOled.drawFont8(buf, x, 0);
-    snprintf_P(buf, sizeof(buf), PSTR("OFFSET"));
-    len = strlen(buf);
-    len = len * 8;
-    x = (128 - len) / 2;
-    OzOled.drawFont8(buf, x, 0);
-
-    OzOled.sendCommand(0xD3);
-    OzOled.sendCommand(0x00 + 48);
-
-    delay(2000);
-
-    OzOled.sendCommand(0xD3);
-    OzOled.sendCommand(0x00);
-
-    delay(2000);
-
-    snprintf_P(buf, sizeof(buf), PSTR("START LINE"));
-    len = strlen(buf);
-    len = len * 8;
-    x = (128 - len) / 2;
-    OzOled.drawFont8(buf, x, 0);
-
-    byte STARTLINE = (0x40 + 48);
-    OzOled.sendCommand(STARTLINE);
-
-    // while (true)
-    //   ;
-
-    delay(2000);
-
-    STARTLINE = (0x40);
-    OzOled.sendCommand(STARTLINE);
-
-    delay(2000);
-
-    //change STARTLINE
-    snprintf_P(buf, sizeof(buf), PSTR("VARY START LINE"));
-    len = strlen(buf);
-    len = len * 8;
-    x = (128 - len) / 2;
-    OzOled.drawFont8(buf, x, 0);
-    OzOled.drawLogo2("92", 2, 64, 3, 2, 3);
-    delay(1000);
-
-    Serial.println("Vary Start Line");
-
-    //Varying Display Start Line: (40H - 7FH)
-    //Command no.4
-    //When this command changes the line address, the smooth scrolling or page change takes place.
-    //Default = 40H
-    for (int i = 0; i < 64; i++)
-    {
-      delay(25);
-      byte STARTLINE = (0x40 + i);
-      OzOled.sendCommand(STARTLINE);
-      Serial.println(STARTLINE, HEX);
-    }
-    Serial.println("********");
-    delay(2000);
-    OzOled.drawLogo2("88", 2, 64, 3, 2, 3);
-    delay(2000);
-    for (int i = 0; i < 64; i++)
-    {
-      delay(25);
-      byte STARTLINE = (0x7F - i);
-      OzOled.sendCommand(STARTLINE);
-      Serial.println(STARTLINE, HEX);
-    }
-    Serial.println("********");
-
-    delay(2000);
-
-    STARTLINE = (0x40);
-    OzOled.sendCommand(STARTLINE);
-
-    delay(2000);
-
-    snprintf_P(buf, sizeof(buf), PSTR("               "));
-    len = strlen(buf);
-    len = len * 8;
-    x = (128 - len) / 2;
-    OzOled.drawFont8(buf, x, 0);
-
-    snprintf_P(buf, sizeof(buf), PSTR("VARY MULTIPLEX"));
-    len = strlen(buf);
-    len = len * 8;
-    x = (128 - len) / 2;
-    OzOled.drawFont8(buf, x, 0);
-    OzOled.drawLogo2("57", 2, 64, 3, 2, 3);
-    delay(1000);
-
-    //Varying Multiplex Ration: (Double Bytes Command)
-    //Command no.9
-    //Multiplex Ration Mode Set: (A8H)
-    //Multiplex Ration Data Set: (00H - 3FH)
-    //Default: 0x3F
-    for (int i = 0; i < 64; i++)
-    {
-      delay(25);
-      OzOled.sendCommand(0xA8);
-      OzOled.sendCommand(0x3F - i);
-      Serial.println(i);
-    }
-    for (int i = 0; i < 64; i++)
-    {
-      delay(25);
-      OzOled.sendCommand(0xA8);
-      OzOled.sendCommand(0x00 + i);
-      Serial.println(i);
-    }
-
-    delay(2000);
-
-    OzOled.sendCommand(0xA8);
-    OzOled.sendCommand(0x3F);
-
-    delay(2000);
-
-    snprintf_P(buf, sizeof(buf), PSTR("               "));
-    len = strlen(buf);
-    len = len * 8;
-    x = (128 - len) / 2;
-    OzOled.drawFont8(buf, x, 0);
-
-    snprintf_P(buf, sizeof(buf), PSTR("VARY OFFSET"));
-    len = strlen(buf);
-    len = len * 8;
-    x = (128 - len) / 2;
-    OzOled.drawFont8(buf, x, 0);
-    OzOled.drawLogo2("39", 2, 64, 3, 2, 3);
-    delay(1000);
-
-    //Varying Display Offset: (Double Bytes Command)
-    //Command no. 14
-    //Display Offset Mode Set: (D3H)
-    //Display Offset Data Set: (00H~3FH)
-    //Default: 0x00
-    for (int i = 0; i < 64; i++)
-    {
-      delay(25);
-      OzOled.sendCommand(0xD3);
-      OzOled.sendCommand(0x00 + i);
-      Serial.println(i);
-    }
-    for (int i = 0; i < 64; i++)
-    {
-      delay(25);
-      OzOled.sendCommand(0xD3);
-      OzOled.sendCommand(0x3F - i);
-      Serial.println(i);
-    }
-
-    //OzOled.drawBitmap(OscarLogo, 0, 0, 16, 8);
-    //OzOled.sendCommand(0x71);
-    //OzOled.drawBitmap(menu_torch, 6, 2, 4, 4);
-    //OzOled.drawBitmap(menu_settings, 11, 2, 4, 4);
-
-    //OzOled.setPageMode();
-    //  //OzOled.setHorizontalMode();
-    //  OzOled.setCursorXY(64,0);
-    //borderLine('5');
-    //  OzOled.setCursorXY(64,1);
-    //  borderLine("5");
-    //OzOled.drawLogo(locationBMP, 48, 32, 2,4);
-    //OzOled.setHorizontalMode();
-
-    //delay(1000);
-
-    while (1)
-      ;
-
-    // bool monitor = 0;
-    // while (monitor == 0)
-    // {
-    //   monitor = switchPinToggled;
-    // };
-  }
-
+  // utcTime = 592953120 - 5;
+  // utcTime = 592953120 - 305;
   // Serial.println(F("Setup completed"));
 }
-
-long value = 977;
-long value_min = 977;
-long value_max = 999;
-int x = 800;
-
-boolean t = false;
-long a;
-
-unsigned long blinkTimer;
-boolean
-    boolShow,
-    boolShowOld,
-    colonON,
-    colonON_old;
-
-char h_old[1];
-char m_old[1];
-char h_digit_1_old[1], h_digit_2_old[1], m_digit_1_old[1], m_digit_2_old[1], s_digit_1_old[1], s_digit_2_old[1];
-
-unsigned long previousMillis;
-unsigned long timer_500ms;
-unsigned long timer_500ms_old;
-unsigned long timer_1s;
-unsigned long timer_1s_old;
-
-const long interval = 500;
-
-byte columnStart;
-byte rowStart = 0xB7;
-
-byte increment;
-
-byte mux = 16; //normal value is 63
-boolean muxHIGH = LOW;
-
-byte offset = 47; //normal value is 0
-boolean offsetHIGH = HIGH;
-
-byte startline = 0x6F; //min value is 0x40(0); max 0x7F(63)
-boolean startlineHIGH = HIGH;
-
-// byte PAGE;
-byte PAGE_old = 100;
-byte MENU;
-boolean UPDATE = true;
-boolean UPDATE_TIME = true;
-boolean UPDATE_SHOLAT = true;
-boolean FORCE_UPDATE_TIME;
-boolean FORCE_UPDATE_SHOLAT;
-int CURRENTTIMEID_old = 100;
-int NEXTTIMEID_old = 100;
-int HOUR_old = 100;
-int MINUTE_old = 100;
-
-boolean GPS = true;
-boolean OLED = true;
 
 enum enumMode
 {
@@ -936,21 +656,22 @@ enum enumPage
 void ConstructClockPage()
 {
   char buf[17]; // MAGHRIB 18hr 36min
-  // char day[3];
-  // strcpy(day, dayShortStr(dtLocal->tm_wday));
-  char mon[4];
-  strcpy(mon, monthShortStr(dtLocal->tm_mon));
-  snprintf_P(buf, sizeof(buf), PSTR("%s,%d-%s SAT%2d"),
-             dayShortStr(dtLocal->tm_wday),
-             dtLocal->tm_mday,
-             mon,
-             GPSsatellites);
-  OzOled.drawFont8(buf, 0, 0);
-  // snprintf_P(buf, sizeof(buf), PSTR("SAT%2d"), GPSsatellites);
-  // OzOled.drawFont8(buf, 90, 0);
 
-  // OzOled.printBigNumber(dtostrf(h, 0, 0, buf), 0, 2);
-  // OzOled.printBigNumber(dtostrf(m, 0, 0, buf), 75, 2);
+  // char mon[4];
+  // strcpy(mon, monthShortStr(dtLocal.Month()));
+  // snprintf_P(buf, sizeof(buf), PSTR("%s,%d-%s SAT%2d"),
+  //            dayShortStr(dtLocal.DayOfWeek()),
+  //            dtLocal.Day(),
+  //            mon,
+  //            fix.satellites);
+
+  // snprintf_P(buf, sizeof(buf), PSTR("%d-%d-%d SAT%2d"),
+  //            dtLocal.Day(),
+  //            dtLocal.Month(),
+  //            dtLocal.Year(),
+  //            fix.satellites);
+
+  // OzOled.drawFont8(buf, 0, 0);
 
   snprintf_P(buf, sizeof(buf), PSTR("%2d:%02d:%02d"), h, m, s);
   OzOled.printBigNumber(buf, 0, 2);
@@ -963,17 +684,17 @@ void ConstructSpeedPage()
 {
   char buf[17];
 
-  if (GPSfixStatus)
-    snprintf_P(buf, sizeof(buf), PSTR("SAT%2d"), GPSsatellites);
+  if (fix.valid.status)
+    snprintf_P(buf, sizeof(buf), PSTR("SAT%2d"), fix.satellites);
   else
     snprintf_P(buf, sizeof(buf), PSTR("NOSIG"));
 
   OzOled.drawFont8(buf, 90, 0);
 
-  if (validGPSspeedFlag)
+  if (fix.valid.speed)
   {
     // snprintf_P(buf, sizeof(buf), PSTR("%03d"), (int)GPSspeedKph);
-    dtostrf(GPSspeedKph, 6, 1, buf);
+    dtostrf(fix.speed_kph(), 6, 1, buf);
   }
   else
   {
@@ -981,7 +702,7 @@ void ConstructSpeedPage()
   }
   OzOled.printBigNumber(buf, 0, 2);
 
-  if (validGPSspeedFlag)
+  if (fix.valid.location)
   {
     dtostrf(distanceToBaseKm, 6, 1, buf);
   }
@@ -1007,16 +728,16 @@ void ConstructBaseLocationPage()
 
   // OzOled.drawFont8(buf, x, 0);
 
-  snprintf_P(buf, sizeof(buf), PSTR("BASE"));
+  snprintf_P(buf, sizeof(buf), PSTR("BASE LOC."));
   OzOled.drawFont8(buf, 0, 0);
-  OzOled.drawFont8(dtostrf(configLocation.latitude, 0, 7, buf), 0, 1);
-  OzOled.drawFont8(dtostrf(configLocation.longitude, 0, 6, buf), 0, 2);
+  OzOled.drawFont8(dtostrf(configLocation.latitude, 11, 7, buf), 0, 1);
+  OzOled.drawFont8(dtostrf(configLocation.longitude, 11, 6, buf), 0, 2);
 
-  snprintf_P(buf, sizeof(buf), PSTR("CURRENT"));
+  snprintf_P(buf, sizeof(buf), PSTR("CURRENT LOC."));
   OzOled.drawFont8(buf, 0, 4);
-  OzOled.drawFont8(dtostrf(GPSlatitude, 0, 7, buf), 0, 5);
-  OzOled.drawFont8(dtostrf(GPSlongitude, 0, 6, buf), 0, 6);
-  OzOled.drawFont8(dtostrf(distanceToBaseKm, 0, 3, buf), 0, 7);
+  OzOled.drawFont8(dtostrf(fix.latitude(), 11, 7, buf), 0, 5);
+  OzOled.drawFont8(dtostrf(fix.longitude(), 11, 6, buf), 0, 6);
+  OzOled.drawFont8(dtostrf(distanceToBaseKm, 11, 3, buf), 0, 7);
 
   //menu text
   // OzOled.drawFont8("Alarm     ", 0, 7);
@@ -1061,12 +782,13 @@ void ConstructSholatTimePage()
     {
       uint8_t hr, mnt;
 
-      time_t tempTimestamp = timestampSholatTimesToday[i] + TimezoneSeconds();
-      struct tm *tm;
-      tm = gmtime(&tempTimestamp);
+      unsigned long tempTimestamp = timestampSholatTimesToday[i] + TimezoneSeconds();
 
-      hr = tm->tm_hour;
-      mnt = tm->tm_min;
+      RtcDateTime tm;
+      tm = RtcDateTime(tempTimestamp);
+
+      hr = tm.Hour();
+      mnt = tm.Minute();
 
       snprintf_P(temp, sizeof(temp), PSTR(" %-7s: %02d:%02d"), sholatNameStr(i), hr, mnt);
 
@@ -1092,20 +814,20 @@ void ConstructUptimePage()
   uint8_t x = (128 - len) / 2;
   OzOled.drawFont8(buf, x, 0);
 
-  if (0)
+  if (1)
   {
     // uptime strings
-    time_t uptime = millis() / 1000;
+    unsigned long uptime = millis() / 1000;
+
     uint16_t days;
     uint8_t hours;
     uint8_t minutes;
     uint8_t seconds;
 
-    struct tm *tm = gmtime(&uptime); // convert to broken down time
-    days = tm->tm_yday;
-    hours = tm->tm_hour;
-    minutes = tm->tm_min;
-    seconds = tm->tm_sec;
+    days = elapsedDays(uptime);
+    hours = numberOfHours(uptime);
+    minutes = numberOfMinutes(uptime);
+    seconds = numberOfSeconds(uptime);
 
     snprintf_P(buf, sizeof(buf), PSTR("%u days"), days);
     len = strlen(buf);
@@ -1128,7 +850,6 @@ void ConstructUptimePage()
 
 void loop()
 {
-
   parseGPScompleted = false;
   bool tick1000ms = 0;
   static byte page = 0;
@@ -1174,162 +895,33 @@ void loop()
     encPos_old = encPos;
   }
 
-  //************************************//
-  //                GPS                 //
-  //************************************//
-  //Serial.print(GPS);
-
-  // validGPSstatusFlag = false;
-  // validGPSdateFlag = false;
-  // validGPStimeFlag = false;
-  // validGPSlocationFlag = false;
-  // validGPSaltitudeFlag = false;
-  // validGPSsatellitesFlag = false;
-
-  if (!switchPinFlag || rightPinFlag || leftPinFlag)
-    // noInterrupts();
-    GPSLoop();
-  // interrupts();
-
-  digitalWrite(ledPin, parseGPScompleted);
-
-  if (1)
-  {
-    unsigned long currentMillis = millis();
-    static unsigned long prevMillis = 0;
-
-    if (parseGPScompleted)
-    {
-      if (validGPSlocationFlag)
-      {
-        distanceToBaseKm = haversine(GPSlatitude, GPSlongitude, configLocation.latitude, configLocation.longitude) / 1000UL;
-      }
-    }
-    if (validGPStimeFlag && validGPSdateFlag)
-    {
-      utcTime = GPStimestamp;
-
-      struct tm *timeinfo;
-
-      // time_t rawtime;
-
-      // time(&utcTime);
-      timeinfo = gmtime(&utcTime);
-
-      mktime(timeinfo);
-      localTime = utcTime + TimezoneSeconds();
-
-      dtLocal = localtime(&localTime);
-
-      static uint32_t utcTime_old = 0;
-      if (utcTime != utcTime_old)
-      {
-        utcTime_old = utcTime;
-        prevMillis = currentMillis;
-        tick1000ms = true;
-      }
-    }
-    else
-    {
-      if (currentMillis - prevMillis >= 999)
-      {
-        prevMillis = currentMillis;
-
-        utcTime++;
-
-        struct tm *timeinfo;
-
-        // time_t rawtime;
-
-        // time(&utcTime);
-        timeinfo = gmtime(&utcTime);
-
-        mktime(timeinfo);
-        localTime = utcTime + TimezoneSeconds();
-
-        dtLocal = localtime(&localTime);
-
-        tick1000ms = true;
-      }
-    }
-  }
-
-  if (tick1000ms)
-  {
-    s = dtLocal->tm_sec;
-    h = dtLocal->tm_hour;
-    m = dtLocal->tm_min;
-
-    // if (validGPSlocationFlag)
-    // {
-    //   configLocation.latitude = GPSlatitude;
-    //   configLocation.longitude = GPSlongitude;
-    // }
-  }
-
-  if (0)
-  {
-    if (parseGPScompleted)
-    {
-      utcTime = GPStimestamp;
-
-      struct tm *timeinfo;
-
-      // time_t rawtime;
-
-      // time(&utcTime);
-      timeinfo = gmtime(&utcTime);
-
-      mktime(timeinfo);
-      localTime = utcTime + TimezoneSeconds();
-
-      dtLocal = localtime(&localTime);
-    }
-
-    if (parseGPScompleted)
-    {
-      static uint32_t utcTime_old = 0;
-      if (utcTime != utcTime_old)
-      {
-        utcTime_old = utcTime;
-        tick1000ms = true;
-      }
-    }
-
-    if (parseGPScompleted)
-    {
-      s = dtLocal->tm_sec;
-      h = dtLocal->tm_hour;
-      m = dtLocal->tm_min;
-
-      if (validGPSlocationFlag)
-      {
-        if ((int)distanceToBaseKm >= 10)
-        {
-          configLocation.latitude = GPSlatitude;
-          configLocation.longitude = GPSlongitude;
-
-          updateEEPROM();
-
-          process_sholat();
-        }
-      }
-    }
-  }
-
-  digitalWrite(ledPin, LOW);
-
   if (switchPinToggled)
   {
-    DEBUG("pin toggled\r\n");
+    // DEBUG("pin toggled\r\n");
     switchPinToggled = false;
 
-    mode++;
-    if (mode == modeCount)
-      mode = pageMode;
-    DEBUG("mode: %d\r\n", mode);
-    // alarmState = HIGH;
-    // tone10 = HIGH;
+    if (page == Timezone || page == BaseLocation)
+    {
+      mode++;
+      if (mode == modeCount)
+        mode = pageMode;
+      // DEBUG("mode: %d\r\n", mode);
+
+      if (page == BaseLocation)
+      {
+        if (fix.valid.location)
+        {
+          configLocation.latitude = fix.latitude();
+          configLocation.longitude = fix.longitude();
+        }
+      }
+
+      Tone1(buzzerPin, 512);
+
+      updateEEPROM();
+
+      processSholatFlag = true;
+    }
   }
 
   if (switchPinHold)
@@ -1342,7 +934,7 @@ void loop()
 
   if (leftPinFlag || rightPinFlag)
   {
-    // Tone0(buzzerPin, 4000, 20, true);
+    Tone0(buzzerPin, 4000, 20, true);
 
     if (mode == pageMode)
     {
@@ -1384,64 +976,88 @@ void loop()
     }
   }
 
-  // Process Sholat
+  //************************************//
+  //                GPS                 //
+  //************************************//
+
+  if (!switchPinFlag || rightPinFlag || leftPinFlag)
+    // noInterrupts();
+    GPSLoop();
+  // interrupts();
+
+  digitalWrite(ledPin, parseGPScompleted);
+
+  if (1)
+  {
+    unsigned long currentMillis = millis();
+    static unsigned long prevMillis = 0;
+
+    if (parseGPScompleted)
+    {
+      if (fix.valid.location)
+      {
+        distanceToBaseKm = haversine(fix.latitude(), fix.longitude(), configLocation.latitude, configLocation.longitude) / 1000UL;
+
+        // if ((int)distanceToBaseKm >= 10)
+        // {
+        //   configLocation.latitude = fix.latitude();
+        //   configLocation.longitude = fix.longitude();
+
+        //   updateEEPROM();
+
+        //   process_sholat();
+        // }
+      }
+    }
+    if (parseGPScompleted && fix.valid.time && fix.valid.date)
+    {
+      utcTime = fix.dateTime;
+
+      ProcessTimestamp(utcTime);
+
+      static uint32_t utcTime_old = 0;
+      if (utcTime != utcTime_old)
+      {
+        utcTime_old = utcTime;
+        prevMillis = currentMillis;
+        tick1000ms = true;
+      }
+    }
+    else
+    {
+      if (currentMillis - prevMillis >= 999)
+      {
+        prevMillis = currentMillis;
+
+        utcTime++;
+
+        ProcessTimestamp(utcTime);
+
+        tick1000ms = true;
+      }
+    }
+  }
+
+  digitalWrite(ledPin, LOW);
+
+  // process praytime
+  static uint8_t monthDay_old = 254;
+  uint8_t monthDay = dtLocal.Day();
+  if (monthDay != monthDay_old)
+  {
+    monthDay_old = monthDay;
+    processSholatFlag = true;
+  }
+
+  if (processSholatFlag)
+  {
+    processSholatFlag = false;
+    process_sholat();
+    process_sholat_2nd_stage();
+  }
+
   if (tick1000ms)
   {
-    // tone(buzzerPin, 4000, 750);
-    // tone(buzzerPin, 4000, 750);
-    // TestTone();
-    // DEBUG("%lu\r\n", utcTime);
-
-    static bool alarmSholat = false;
-
-    if (utcTime == (nextSholatTime - 10 * 60))
-    {
-    }
-    else if (utcTime == (nextSholatTime - 5 * 60))
-    {
-      // Tone1(buzzerPin, 500);
-    }
-    else if (utcTime == nextSholatTime)
-    {
-      alarmSholat = true;
-      
-      // Tone0(buzzerPin, 2200, 500, false);
-
-      // tone(buzzerPin, 2200);
-      // delay(500);
-      // noTone(buzzerPin);
-    }
-
-    if (alarmSholat)
-    {
-      static uint8_t count = 0;
-      int dur = 500;
-      
-      count++;
-      if (count == 5)
-      {
-        dur = 2000;
-        count = 0;
-        alarmSholat = false;
-      }
-      Tone0(buzzerPin, 2200, dur, false);
-    }
-
-    // process praytime
-    bool processSholatFlag = false;
-    static uint8_t monthDay_old = 254;
-    uint8_t monthDay = dtLocal->tm_mday;
-    if (monthDay != monthDay_old)
-    {
-      monthDay_old = monthDay;
-      processSholatFlag = true;
-    }
-
-    if (processSholatFlag)
-    {
-      process_sholat();
-    }
-
     process_sholat_2nd_stage();
   }
 
@@ -1490,6 +1106,31 @@ void loop()
 
   if (page == Clock)
   {
+    char buf[17];
+    snprintf_P(buf, sizeof(buf), PSTR("%d-%d-%d SAT%2d"),
+               dtLocal.Day(),
+               dtLocal.Month(),
+               dtLocal.Year(),
+               fix.satellites);
+
+    static int x = 127;
+    OzOled.drawFont8(buf, x, 0);
+
+    static uint8_t count = 0;
+    count++;
+    if (count == 5)
+    {
+      x--;
+      count = 0;
+      if (x == -128)
+      {
+        x = 127;
+      }
+    }
+
+    // snprintf_P(buf, sizeof(buf), PSTR("SAT%2d"), fix.satellites);
+    // OzOled.drawFont8(buf, 88, 0);
+
     if (tick1000ms)
     {
       ConstructClockPage();
@@ -1520,7 +1161,7 @@ void loop()
         dtostrf(configLocation.timezone, 3, 0, temp);
         len = strlen(temp);
         len = 3 * 8 * len;
-        x = (128 - len) / 2;
+        uint8_t x = (127 - len) / 2;
         OzOled.printBigNumber(temp, x, 2);
       }
     }
@@ -1530,6 +1171,58 @@ void loop()
     if (tick1000ms)
     {
       ConstructUptimePage();
+    }
+  }
+
+  // buzzer
+  if (tick1000ms)
+  {
+    static bool alarmPreSholat = false;
+    if (utcTime == (nextSholatTime - 10 * 60))
+    {
+      alarmPreSholat = true;
+    }
+
+    if (utcTime == (nextSholatTime - 5 * 60))
+    {
+      alarmPreSholat = true;
+    }
+
+    if (alarmPreSholat)
+    {
+
+      static uint8_t count = 0;
+
+      count++;
+      if (count == 3)
+      {
+        count = 0;
+        alarmPreSholat = false;
+      }
+
+      buzzer(buzzerPin, 500);
+    }
+
+    static bool alarmSholat = false;
+    if (utcTime == nextSholatTime)
+    {
+      alarmSholat = true;
+    }
+
+    if (alarmSholat)
+    {
+      static uint8_t count = 0;
+      int dur = 500;
+
+      count++;
+      if (count == 5)
+      {
+        dur = 2000;
+        count = 0;
+        alarmSholat = false;
+      }
+
+      Tone0(buzzerPin, 2375, dur, false);
     }
   }
 
@@ -1573,7 +1266,7 @@ void loop()
     }
   }
 
-  if (1)
+  if (0)
   {
     if (leftPinFlag)
     {
@@ -1607,710 +1300,4 @@ void loop()
   {
     rightPinFlag = false;
   }
-
-  // Tone0(pinBuzzer, 50);
-  // tone(pinBuzzer, 1000, 500);
-  // buzzer(buzzerPin, 50);
-  // Tone0(pinBuzzer, 50);
-  // Tone1(buzzerPin, 50);
-  // Tone10(pinBuzzer, 50);
-
-#ifdef DEBUG
-  if (0)
-  {
-    if (GPS)
-    {
-      requestSync();
-
-      if (validGPSlocationFlag)
-      {
-        configLocation.latitude = GPSlatitude;
-        configLocation.longitude = GPSlongitude;
-      }
-      GPS = false;
-    }
-
-    //************************************//
-    //              SHOLAT                //
-    //************************************//
-
-    else
-    {
-      GPS = true;
-
-      // //************************************//
-      // //          READING PIN 1             //
-      // //************************************//
-
-      // // read the state of the switch into a local variable:
-      // int reading = digitalRead(buttonPin);
-
-      // // check to see if you just pressed the button
-      // // (i.e. the input went from LOW to HIGH),  and you've waited
-      // // long enough since the last press to ignore any noise:
-
-      // // If the switch changed, due to noise or pressing:
-      // if (reading != lastButtonState)
-      // {
-      //   // reset the debouncing timer
-      //   lastDebounceTime = millis();
-      // }
-
-      // if ((millis() - lastDebounceTime) > debounceDelay)
-      // {
-      //   // whatever the reading is at, it's been there for longer
-      //   // than the debounce delay, so take it as the actual current state:
-
-      //   // if the button state has changed:
-      //   if (reading != buttonState)
-      //   {
-      //     buttonState = reading;
-
-      //     // only toggle the LED if the new button state is HIGH
-      //     if (buttonState == LOW)
-      //     {
-      //       // ledState = !ledState;
-      //       drawState = !drawState;
-      //       MENU++;
-      //       if (MENU > 6)
-      //       {
-      //         MENU = 0;
-      //       }
-      //       // Serial.println(MENU);
-      //       UPDATE = true;
-      //     }
-      //   }
-      // }
-
-      // // save the reading.  Next time through the loop,
-      // // it'll be the lastButtonState:
-      // lastButtonState = reading;
-
-      // //************************************//
-      // //        READING ENTER PIN           //
-      // //************************************//
-
-      // int readingEnterPin = digitalRead(enterPin);
-
-      // if (readingEnterPin != lastEnterPinState)
-      // {
-      //   lastDebounceTimeEnterPin = millis();
-      // }
-
-      // if ((millis() - lastDebounceTimeEnterPin) > debounceDelay)
-      // {
-      //   if (readingEnterPin != enterPinState)
-      //   {
-      //     enterPinState = readingEnterPin;
-
-      //     // only toggle the LED if the new button state is HIGH
-      //     if (enterPinState == LOW)
-      //     {
-      //       // ledState = !ledState;
-      //       //drawState = !drawState;
-      //       PAGE++;
-      //       OzOled.clearDisplay();
-      //       if (PAGE > 1)
-      //       {
-      //         PAGE = 0;
-      //       }
-      //       UPDATE = true;
-
-      //       if (PAGE == 0)
-      //       {
-      //         FORCE_UPDATE_TIME = true;
-      //         FORCE_UPDATE_SHOLAT = true;
-      //       }
-      //     }
-      //   }
-      // }
-
-      // lastEnterPinState = readingEnterPin;
-
-      // set the LED:
-      // digitalWrite(ledPin, ledState);
-
-      //************************************//
-      //          READING SERIAL            //
-      //************************************//
-
-      //    //if (Serial.available()) {
-      //    while (Serial.available() > 0) {
-      //      //Serial.println("Serial available!");
-      //      processSyncMessage();
-      //    }
-      //    if (timeStatus() != timeNotSet) {
-      //      //digitalClockDisplay();
-      //    }
-      //    if (timeStatus() == timeSet) {
-      //      //digitalWrite(13, HIGH); // LED on if synced
-      //    } else {
-      //      //digitalWrite(13, LOW);  // LED off if needs refresh
-      //    }
-      //delay(1000);
-
-      // bool SHOW = false;
-      unsigned long millisNow = millis();
-
-      //************************************//
-      //              TEST                  //
-      //************************************//
-
-      //  OzOled.drawLogo(menu_settings, increment, 32, 0, 4);
-      //  OzOled.eraseLogo(increment, 32, 0, 4);
-      //  increment = increment + 32;
-      //  if (increment > 127) {
-      //    increment = 0;
-      //  }
-
-      //Menu sequence:
-      //Alarm, Flashlight, Stopwatch, Games, Settings, Diagnostics, Exit
-      if (PAGE == 1 && MENU == 0 && UPDATE)
-      {
-
-        //title
-        OzOled.drawFont8("< MAIN MENU >", 17, 0);
-
-        OzOled.eraseLogo(0, 32, 2, 4);
-        OzOled.drawBitmap(menu_alarm, 6, 2, 4, 4);
-        //OzOled.eraseLogo(48, 32, 0, 4);
-        OzOled.drawLogo(menu_torch, 95, 32, 2, 4);
-        //OzOled.eraseLogo(112, 32, 0, 4);
-        OzOled.drawLogo(selectbar_top, 46, 36, 1, 1);
-        OzOled.drawLogo(selectbar_bottom, 46, 36, 6, 1);
-
-        //menu text
-        OzOled.drawFont8("Alarm     ", 0, 7);
-
-        UPDATE = false;
-      }
-      if (PAGE == 1 && MENU == 1 && UPDATE)
-      {
-
-        //title
-        OzOled.drawFont8("< MAIN MENU >", 17, 0);
-
-        OzOled.drawLogo(menu_alarm, 0, 32, 2, 4);
-        //OzOled.eraseLogo(-16, 32, 0, 4);
-        OzOled.drawLogo(menu_torch, 48, 32, 2, 4);
-        //OzOled.eraseLogo(48, 32, 0, 4);
-        OzOled.drawLogo(menu_stopwatch, 95, 32, 2, 4);
-        //OzOled.eraseLogo(112, 32, 0, 4);
-        OzOled.drawLogo(selectbar_top, 46, 36, 1, 1);
-        OzOled.drawLogo(selectbar_bottom, 46, 36, 6, 1);
-
-        //menu text
-        OzOled.drawFont8("Flashlight", 0, 7);
-
-        UPDATE = false;
-      }
-
-      if (PAGE == 1 && MENU == 2 && UPDATE)
-      {
-
-        //title
-        OzOled.drawFont8("< MAIN MENU >", 17, 0);
-
-        OzOled.drawLogo(menu_torch, 0, 32, 2, 4);
-        //OzOled.eraseLogo(-16, 32, 0, 4);
-        OzOled.drawLogo(menu_stopwatch, 48, 32, 2, 4);
-        //OzOled.eraseLogo(48, 32, 0, 4);
-        OzOled.drawLogo(menu_games, 95, 32, 2, 4);
-        //OzOled.eraseLogo(112, 32, 0, 4);
-        OzOled.drawLogo(selectbar_top, 46, 36, 1, 1);
-        OzOled.drawLogo(selectbar_bottom, 46, 36, 6, 1);
-
-        //menu text
-        OzOled.drawFont8("Stopwatch ", 0, 7);
-
-        UPDATE = false;
-      }
-
-      if (PAGE == 1 && MENU == 3 && UPDATE)
-      {
-
-        //title
-        OzOled.drawFont8("< MAIN MENU >", 17, 0);
-
-        OzOled.drawLogo(menu_stopwatch, 0, 32, 2, 4);
-        //OzOled.eraseLogo(-16, 32, 0, 4);
-        OzOled.drawLogo(menu_games, 48, 32, 2, 4);
-        //OzOled.eraseLogo(48, 32, 0, 4);
-        OzOled.drawLogo(menu_settings, 95, 32, 2, 4);
-        //OzOled.eraseLogo(112, 32, 0, 4);
-        OzOled.drawLogo(selectbar_top, 46, 36, 1, 1);
-        OzOled.drawLogo(selectbar_bottom, 46, 36, 6, 1);
-
-        //menu text
-        OzOled.drawFont8("Games     ", 0, 7);
-
-        UPDATE = false;
-      }
-
-      if (PAGE == 1 && MENU == 4 && UPDATE)
-      {
-
-        //title
-        OzOled.drawFont8("< MAIN MENU >", 17, 0);
-
-        OzOled.drawLogo(menu_games, 0, 32, 2, 4);
-        //OzOled.eraseLogo(-16, 32, 0, 4);
-        OzOled.drawLogo(menu_settings, 48, 32, 2, 4);
-        //OzOled.eraseLogo(48, 32, 0, 4);
-        OzOled.drawLogo(menu_diagnostic, 95, 32, 2, 4);
-        //OzOled.eraseLogo(112, 32, 0, 4);
-        OzOled.drawLogo(selectbar_top, 46, 36, 1, 1);
-        OzOled.drawLogo(selectbar_bottom, 46, 36, 6, 1);
-
-        //menu text
-        OzOled.drawFont8("Settings", 0, 7);
-
-        UPDATE = false;
-      }
-
-      if (PAGE == 1 && MENU == 5 && UPDATE)
-      {
-
-        //title
-        OzOled.drawFont8("< MAIN MENU >", 17, 0);
-
-        OzOled.drawLogo(menu_settings, 0, 32, 2, 4);
-        //OzOled.eraseLogo(-16, 32, 0, 4);
-        OzOled.drawLogo(menu_diagnostic, 48, 32, 2, 4);
-        //OzOled.eraseLogo(48, 32, 0, 4);
-        OzOled.drawLogo(menu_exit, 95, 32, 2, 4);
-        //OzOled.eraseLogo(112, 32, 0, 4);
-        OzOled.drawLogo(selectbar_top, 46, 36, 1, 1);
-        OzOled.drawLogo(selectbar_bottom, 46, 36, 6, 1);
-
-        //menu text
-        OzOled.drawFont8("Diagnostic", 0, 7);
-
-        UPDATE = false;
-      }
-
-      if (PAGE == 1 && MENU == 6 && UPDATE)
-      {
-
-        //title
-        OzOled.drawFont8("< MAIN MENU >", 17, 0);
-
-        OzOled.drawLogo(menu_diagnostic, 0, 32, 2, 4);
-        //OzOled.eraseLogo(-16, 32, 0, 4);
-        OzOled.drawLogo(menu_exit, 48, 32, 2, 4);
-        //OzOled.eraseLogo(48, 32, 0, 4);
-        //OzOled.drawLogo(menu_exit, 95, 32, 2, 4);
-        OzOled.eraseLogo(95, 32, 2, 4);
-        OzOled.drawLogo(selectbar_top, 46, 36, 1, 1);
-        OzOled.drawLogo(selectbar_bottom, 46, 36, 6, 1);
-
-        //menu text
-        OzOled.drawFont8("Exit      ", 0, 7);
-
-        UPDATE = false;
-      }
-
-      //OzOled.drawFont8("Mantap lah boss..!?", 0, 5, 5, 1);
-      //OzOled.drawFont8("885", 0, 6);
-      //OzOled.drawFont8(">Back jqQ", 0, 5, 7, 1);
-      //char buf[2];
-      //dtostrf(s * 14, 4, 0, buf);
-      //OzOled.drawFont8(buf, 0, 7);
-
-      //************************************//
-      //              COLON                 //
-      //************************************//
-
-      if (PAGE == 0 && UPDATE)
-      {
-
-        //blink colon symbol every 0.5 second)
-        if (millisNow >= timer_500ms_old + 500)
-        {
-
-          // reset timer
-          timer_500ms_old = millisNow;
-
-          //colonON = !colonON;
-        }
-
-        if (colonON != colonON_old && colonON_old == false)
-        {
-          //OzOled.drawLogo2(":", 1, 45, 4, 3, 2);
-          // OzOled.drawLogo2(":", 1, 41, 3, 2, 3);
-        }
-        else if (colonON != colonON_old && colonON_old == true)
-        {
-          //OzOled.drawLogo2("A", 1, 45, 4, 3, 2);
-          // OzOled.drawLogo2(" ", 1, 41, 3, 2, 3);
-        }
-        // update the status
-
-        colonON_old = colonON;
-      }
-
-      //************************************
-      //     TIME
-      //************************************
-
-      s = dtLocal->tm_sec;
-
-      static uint8_t s_old = 61;
-
-      if (s != s_old)
-      {
-        s_old = s;
-        UPDATE_TIME = true;
-        UPDATE_SHOLAT = true;
-      }
-
-      if (PAGE == 0 && UPDATE_TIME)
-      {
-
-        h = dtLocal->tm_hour;
-        m = dtLocal->tm_min;
-
-        UPDATE_TIME = false;
-        FORCE_UPDATE_TIME = false;
-      }
-
-      //************************************
-      //     SHOLAT MENU
-      //************************************
-
-      if (PAGE == 0 && PAGE != PAGE_old)
-      {
-        PAGE_old = PAGE;
-
-        // OzOled.drawFont8("hr", 80, 0);
-        // OzOled.drawFont8("min", 111, 0);
-      }
-
-      //************************************
-      //     CALCULATE SHOLAT TIME
-      //************************************
-
-      if (UPDATE_SHOLAT || FORCE_UPDATE_SHOLAT)
-      {
-        process_sholat();
-        process_sholat_2nd_stage();
-
-        // char buf[10];
-
-        // sprintf_P(buf, PSTR("%-7s"), sholatNameStr(NEXTTIMEID));
-        // OzOled.drawFont8(buf, 0, 0);
-        // sprintf_P(buf, PSTR("%2d"), ceilHOUR);
-        // OzOled.drawFont8(buf, 66, 0);
-        // sprintf_P(buf, PSTR("%2d"), ceilMINUTE);
-        // OzOled.drawFont8(buf, 97, 0);
-
-        UPDATE_SHOLAT = false;
-        FORCE_UPDATE_SHOLAT = false;
-
-        /*
-      int timezone = 7;
-      int CURRENTTIMEID, NEXTTIMEID;
-      int hoursNext, minutesNext;
-
-      set_calc_method(Custom);
-      set_asr_method(Shafii);
-      set_high_lats_adjust_method(AngleBased);
-      set_fajr_angle(20);
-      set_isha_angle(18);
-
-      //BEKASI
-      float latitude = -6.26526191;
-      float longitude = 106.97298512;
-      //get prayer time on the current year, month and day
-      get_prayer_times(year(), month(), day(), latitude, longitude, timezone, times);
-
-      for (int i = 0; i < sizeof(times) / sizeof(double); i++)
-      {
-        char tmp[10];
-        int hours, minutes;
-        get_float_time_parts(times[i], hours, minutes);
-        p("%d \t %10s %s \t %02d:%02d \n\r", i, TimeName[i], dtostrf(times[i], 2, 2, tmp), hours, minutes);
-      }
-
-      for (int i = 0; i < sizeof(times) / sizeof(double); i++)
-      {
-
-        float timeNow = hour() / 1.0 + minute() / 60.0;
-        float timeA, timeB;
-        int hours, minutes;
-        get_float_time_parts(times[i], hours, minutes);
-        timeA = times[i];
-        //timeA = times[i] + 2.0 / 60;
-        CURRENTTIMEID = i;
-        if (CURRENTTIMEID == 4)
-        {
-          CURRENTTIMEID = 3;
-        }
-        if (i != 6)
-        {
-          get_float_time_parts(times[i + 1], hoursNext, minutesNext);
-          timeB = times[i + 1];
-          //timeB = times[i + 1]  +  2.0 / 60;
-          NEXTTIMEID = i + 1;
-          if (NEXTTIMEID == 4)
-          {
-            NEXTTIMEID = 5;
-          }
-        }
-        else if (i == 6)
-        {
-          get_float_time_parts(times[0], hoursNext, minutesNext);
-          timeB = times[0];
-          //timeB = times[0] + 2.0 / 60;
-          NEXTTIMEID = 0;
-        }
-
-        if (timeB > timeA)
-        {
-          //Serial.println("case A");
-          if (timeA < timeNow && timeNow < timeB)
-          {
-            //Serial.println("case A1");
-            CURRENTTIMENAME = TimeName[CURRENTTIMEID];
-            NEXTTIMENAME = TimeName[NEXTTIMEID];
-
-            //extract hour and minute from time difference
-            get_float_time_parts(time_diff(timeNow, timeB), HOUR, MINUTE);
-
-            break;
-          }
-        }
-
-        else if (timeB < timeA)
-        {
-          //Serial.println("case B");
-          if ((timeA < timeNow && timeNow < 24) || (0 <= timeNow && timeNow < timeB))
-          {
-            //Serial.println("case B1");
-            CURRENTTIMENAME = TimeName[CURRENTTIMEID];
-            NEXTTIMENAME = TimeName[NEXTTIMEID];
-
-            //extract hour and minute from time difference
-            get_float_time_parts(time_diff(timeNow, timeB), HOUR, MINUTE);
-
-            break;
-          }
-        }
-      } //end of for loop
-
-      // print the current time
-      digitalClockDisplay();
-
-      Serial.print(F("NEXTTIMENAME "));
-      Serial.println(NEXTTIMENAME);
-      Serial.print(F("String length "));
-      Serial.println(NEXTTIMENAME.length());
-
-      if (NEXTTIMEID != NEXTTIMEID_old)
-      {
-        NEXTTIMEID_old = NEXTTIMEID;
-        int len = NEXTTIMENAME.length() + 1;
-        char buf[len];
-        NEXTTIMENAME.toCharArray(buf, len);
-        OzOled.drawFont8("       ", 12, 0);
-        OzOled.drawFont8(buf, 0, 0);
-      }
-
-      //int hoursNext, minutesNext;
-
-      if (HOUR != HOUR_old)
-      {
-        HOUR_old = HOUR;
-
-        char bufHOUR[2];
-        dtostrf(HOUR, 2, 0, bufHOUR);
-
-        OzOled.drawFont8(bufHOUR, 66, 0);
-      }
-
-      if (MINUTE != MINUTE_old)
-      {
-        MINUTE_old = MINUTE;
-
-        char bufMINUTE[2];
-        dtostrf(MINUTE, 2, 0, bufMINUTE);
-
-        OzOled.drawFont8(bufMINUTE, 97, 0);
-      }
-
-      time_t t = now();
-      isAM(t);
-
-      UPDATE_SHOLAT = false;
-      FORCE_UPDATE_SHOLAT = false;
-      */
-      }
-
-      //
-      //
-      //
-      //
-      //
-      //  //Set Display Offset (D3h)
-      //  //Set vertical shift by COM from 0d~63d. The value is reset to 00h after RESET.
-      //  byte offsetON = 0;
-      //
-      //  if (offsetON) {
-      //    if (offset == 47) {
-      //      offsetHIGH = HIGH;
-      //      mux = 16;
-      //      muxHIGH = LOW;
-      //      startline = 0x6F;
-      //      startlineHIGH = HIGH;
-      //    }
-      //    if (offset == 0) {
-      //      offsetHIGH = LOW;
-      //      mux = 63;
-      //      muxHIGH = HIGH;
-      //      startline = 0x40;
-      //      startlineHIGH = LOW;
-      //    }
-      //    byte offsetIncrement = 1;
-      //    if (offsetHIGH == HIGH) {
-      //      offset = offset - offsetIncrement;
-      //    }
-      //    else {
-      //      offset = offset + offsetIncrement;
-      //    }
-      //
-      //
-      //    OzOled.sendCommand(0xD3);
-      //    OzOled.sendCommand(offset);
-      //  }
-      //  else {
-      ////    offset = 0;
-      ////    OzOled.sendCommand(0xD3);
-      ////    OzOled.sendCommand(offset);
-      //  }
-      //
-      //  //Set MUX ratio(A8h)
-      //  //This command switches the default 63 multiplex mode to any multiplex ratio
-      //  //ranging from 16 to 63. The output pads COM0~COM63 will be switched
-      //  //to the corresponding COM signal.
-      //  //Set MUX ratio to N+1 MUX
-      //  //N=A[5:0] : from 16MUX to 64MUX, RESET=111111b (i.e. 63d, 64MUX)
-      //  //A[5:0] from 0 to 14 are invalid entry.
-      //
-      //  byte muxON = 0;
-      //
-      //  if (muxON == 1) {
-      //    if (mux == 63) {
-      //      muxHIGH = HIGH;
-      //    }
-      //    if (mux == 16) {
-      //      muxHIGH = LOW;
-      //    }
-      //    byte muxIncrement = 1;
-      //    if (muxHIGH == HIGH) {
-      //      mux = mux - muxIncrement;
-      //    }
-      //    else {
-      //      mux = mux + muxIncrement;
-      //    }
-      //
-      //    // Mux Command
-      //    OzOled.sendCommand(0xA8);
-      //    OzOled.sendCommand(mux);
-      //  }
-      //  else {
-      //    // Mux Command
-      //    mux = 63;
-      ////    OzOled.sendCommand(0xA8);
-      ////    OzOled.sendCommand(mux);
-      //  }
-      //
-      //
-      //
-      //  //Set Display start line (40h - 7Fh) or 64d - 127d
-      //  //Display start line register is reset to 000000b during RESET.
-      //  byte startlineON = 0;
-      //
-      //  if (startlineON) {
-      //    if (startline == 0x78) {
-      //      startlineHIGH = HIGH;
-      //    }
-      //    if (startline == 0x40) {
-      //      startlineHIGH = LOW;
-      //    }
-      //    byte startlineIncrement = 1;
-      //    if (startlineHIGH == HIGH) {
-      //      startline = startline - startlineIncrement;
-      //    }
-      //    else {
-      //      startline = startline + startlineIncrement;
-      //    }
-      //
-      //    OzOled.sendCommand(startline);
-      //  }
-      //  else {
-      ////    startline = 0x40;
-      ////    OzOled.sendCommand(startline);
-      //  }
-      //
-      //
-      //  /*
-      //    Serial.print("mux=");
-      //    Serial.print(mux);
-      //    Serial.print(" ");
-      //    Serial.print("offset=");
-      //    Serial.print(offset);
-      //    Serial.print(" ");
-      //    Serial.print("startline=");
-      //    Serial.print(" ");
-      //    Serial.println(startline);
-      //  */
-      //
-      //
-      //  if (offset == 0) {
-      //
-      //    //borderLine("2");
-      //    //delay(500);
-      //    //offset = 47;
-      //    //mux = 16;
-      //    //startline = 0x6F;
-      //
-      //    //OzOled.sendCommand(0xD3);
-      //    //OzOled.sendCommand(0);
-      //    //while (true);
-      //  }
-      //  else if (offset == 56) {
-      //    //borderLine("3");
-      //  }
-      //
-      //
-      //
-      //  //if (drawState) {
-      //  if (false) {
-      //    count++;
-      //    if (count % 2) {
-      //      OzOled.drawLogo(locationBMP, 8, 32, 2, 4);
-      //      OzOled.drawLogo(homeBMP, 48, 32, 2, 4);
-      //      OzOled.eraseLogo(88, 32, 2, 4);
-      //    }
-      //    else {
-      //      OzOled.eraseLogo(8, 32, 2, 4);
-      //      OzOled.drawLogo(locationBMP, 48, 32, 2, 4);
-      //      OzOled.drawLogo(homeBMP, 88, 32, 2, 4);
-      //    }
-      //    //delay(100);
-      //    //OzOled.drawLogo(locationBMP, 8, 32, 2, 4);
-      //    //delay(50);
-      //    //OzOled.eraseLogo(48, 32, 2,4);
-      //    //OzOled.drawLogo(homeBMP, 48, 32, 2, 4);
-      //    //delay(50);
-      //    //OzOled.eraseLogo(88, 32, 2,4);
-      //    drawState = LOW;
-      //  }
-      //
-      //
-      //  OzOled.setBrightness(120);
-    }
-  }
-
-#endif
 }

@@ -5,7 +5,7 @@
 #include "sholat.h"
 #include "pgmstring.h"
 #include "locationhelper.h"
-// #include "timehelper.h"
+#include "timehelper.h"
 // #include "progmemmatrix.h"
 // #include <time.h>
 
@@ -28,9 +28,9 @@ extern uint8_t ceilHOUR;
 extern uint8_t ceilMINUTE;
 extern uint8_t CURRENTTIMEID, NEXTTIMEID;
 
-extern time_t nextSholatTime;
+extern unsigned long nextSholatTime;
 
-extern uint32_t timestampSholatTimesToday[TimesCount];
+extern unsigned long timestampSholatTimesToday[TimesCount];
 
 // extern char bufHOUR[3];
 // extern char bufMINUTE[3];

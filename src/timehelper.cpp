@@ -22,11 +22,14 @@
 bool tick1000ms = false;
 
 bool NTP_OK = false;
+unsigned long utcTime;
+unsigned long localTime;
 
-time_t utcTime, localTime;
-time_t _lastSyncd; ///< Stored time of last successful sync
-time_t _firstSync; ///< Stored time of first successful sync after boot
-time_t _lastBoot;
+RtcDateTime dtUtc;
+RtcDateTime dtLocal;
+unsigned long _lastSyncd; ///< Stored time of last successful sync
+unsigned long _firstSync; ///< Stored time of first successful sync after boot
+unsigned long _lastBoot;
 
 uint16_t syncInterval;      ///< Interval to set periodic time sync
 uint16_t shortSyncInterval; ///< Interval to set periodic time sync until first synchronization.
@@ -49,10 +52,10 @@ char *getDateStr(time_t rawtime) // Thu Aug 23 2001
 {
     DEBUGLOG("%s\r\n", __PRETTY_FUNCTION__);
     static char buf[16];
-    // time_t rawtime;
-    // time(&rawtime);
-    struct tm *timeinfo = localtime(&rawtime);
-    strftime(buf, sizeof(buf), "%a %b %d %Y", timeinfo);
+
+    RtcDateTime dt;
+    dt = RtcDateTime(rawtime);
+    snprintf_P(buf, sizeof(buf), PSTR("%02d %02d %02d %d"), dt.DayOfWeek(), dt.Month(), dt.Day(), dt.Year());
 
     return buf;
 }
@@ -61,11 +64,10 @@ char *getTimeStr(time_t rawtime)
 {
     DEBUGLOG("%s\r\n", __PRETTY_FUNCTION__);
     static char buf[12];
-    // time_t rawtime;
-    // time(&rawtime);
-    struct tm *timeinfo = localtime(&rawtime);
-    strftime(buf, sizeof(buf), "%T", timeinfo); //02:55:02
-    // strftime(buf, sizeof(buf), "%r", timeinfo); //02:55:02 pm
+
+    RtcDateTime dt;
+    dt = RtcDateTime(rawtime);
+    snprintf_P(buf, sizeof(buf), PSTR("%02d:%02d:%02d"), dt.Hour(), dt.Minute(), dt.Second()); //02:55:02
 
     return buf;
 }
@@ -81,11 +83,10 @@ char *getUptimeStr()
     uint8_t minutes;
     uint8_t seconds;
 
-    struct tm *tm = gmtime(&uptime); // convert to broken down time
-    days = tm->tm_yday;
-    hours = tm->tm_hour;
-    minutes = tm->tm_min;
-    seconds = tm->tm_sec;
+    days = elapsedDays(uptime);
+    hours = numberOfHours(uptime);
+    minutes = numberOfMinutes(uptime);
+    seconds = numberOfSeconds(uptime);
 
     static char buf[30];
     snprintf_P(buf, sizeof(buf), PSTR("%u day %02d:%02d:%02d"), days, hours, minutes, seconds);
@@ -97,18 +98,17 @@ char *getLastSyncStr()
 {
     DEBUGLOG("%s\r\n", __PRETTY_FUNCTION__);
 
-    time_t diff = time(nullptr) - _lastSyncd;
+    unsigned long diff = utcTime - _lastSyncd;
 
     uint16_t days;
     uint8_t hours;
     uint8_t minutes;
     uint8_t seconds;
 
-    struct tm *tm = gmtime(&diff); // convert to broken down time
-    days = tm->tm_yday;
-    hours = tm->tm_hour;
-    minutes = tm->tm_min;
-    seconds = tm->tm_sec;
+    days = elapsedDays(diff);
+    hours = numberOfHours(diff);
+    minutes = numberOfMinutes(diff);
+    seconds = numberOfSeconds(diff);
 
     static char buf[30];
     if (days > 0)
@@ -135,7 +135,7 @@ char *getNextSyncStr()
 {
     DEBUGLOG("%s\r\n", __PRETTY_FUNCTION__);
 
-    time_t nextsync;
+    unsigned long nextsync;
 
     nextsync = _lastSyncd - utcTime + syncInterval;
 
@@ -144,14 +144,16 @@ char *getNextSyncStr()
     uint8_t minutes;
     uint8_t seconds;
 
-    struct tm *tm = gmtime(&nextsync); // convert to broken down time
-    days = tm->tm_yday;
-    hours = tm->tm_hour;
-    minutes = tm->tm_min;
-    seconds = tm->tm_sec;
+    RtcDateTime tm;
+    tm = RtcDateTime(nextsync); // convert to broken down time
+    days = tm.Day();
+    hours = tm.Hour();
+    minutes = tm.Minute();
+    seconds = tm.Second();
 
     static char buf[30];
-    snprintf_P(buf, sizeof(buf), PSTR("%u days %02d:%02d:%02d"), days, hours, minutes, seconds);
+    snprintf_P(buf, sizeof(buf), PSTR("%d days %02d:%02d:%02d"), days, hours, minutes, seconds);
+    // snprintf_P(buf, sizeof(buf), PSTR("xx days %02d:%02d:%02d"), hours, minutes, seconds);
 
     return buf;
 }
@@ -166,29 +168,4 @@ char *getNextSyncStr()
 
 void TimeSetup()
 {
-    // Synchronize time useing SNTP. This is necessary to verify that
-    // the TLS certificates offered by the server are currently valid.
-    //   Serial.print("Setting time using SNTP");
-
-    //   configTime(8 * 3600, 0, "pool.ntp.org", "time.nist.gov");
-
-    time_t now;
-    struct tm *timeinfo;
-
-    // time(&rawtime);
-    // timeinfo = localtime (&rawtime);
-
-    // time(&now); /* get current time; same as: now = time(NULL)  */
-    now = time(nullptr);
-    // timeinfo = gmtime(&now);
-    timeinfo = localtime(&now);
-
-    timeinfo->tm_year = 2018 - 1900;
-    timeinfo->tm_mon = 9 - 1;
-    timeinfo->tm_mday = 27;
-
-    mktime(timeinfo);
-
-    DEBUGLOG("Current time: ");
-    Serial.println(asctime(timeinfo));
 }

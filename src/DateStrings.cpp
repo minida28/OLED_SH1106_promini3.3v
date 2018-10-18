@@ -28,19 +28,34 @@
 static char buffer[dt_MAX_STRING_LEN+1];  // must be big enough for longest string and the terminating null
 
 
-const char monthStr0[] PROGMEM = "January";
-const char monthStr1[] PROGMEM = "February";
-const char monthStr2[] PROGMEM = "March";
-const char monthStr3[] PROGMEM = "April";
-const char monthStr4[] PROGMEM = "May";
-const char monthStr5[] PROGMEM = "June";
-const char monthStr6[] PROGMEM = "July";
-const char monthStr7[] PROGMEM = "August";
-const char monthStr8[] PROGMEM = "September";
-const char monthStr9[] PROGMEM = "October";
-const char monthStr10[] PROGMEM = "November";
-const char monthStr11[] PROGMEM = "December";
-const char monthStr12[] PROGMEM = "";
+// const char monthStr0[] PROGMEM = "January";
+// const char monthStr1[] PROGMEM = "February";
+// const char monthStr2[] PROGMEM = "March";
+// const char monthStr3[] PROGMEM = "April";
+// const char monthStr4[] PROGMEM = "May";
+// const char monthStr5[] PROGMEM = "June";
+// const char monthStr6[] PROGMEM = "July";
+// const char monthStr7[] PROGMEM = "August";
+// const char monthStr8[] PROGMEM = "September";
+// const char monthStr9[] PROGMEM = "October";
+// const char monthStr10[] PROGMEM = "November";
+// const char monthStr11[] PROGMEM = "December";
+// const char monthStr12[] PROGMEM = "";
+
+const char monthStr0[] PROGMEM = "";
+const char monthStr1[] PROGMEM = "January";
+const char monthStr2[] PROGMEM = "February";
+const char monthStr3[] PROGMEM = "March";
+const char monthStr4[] PROGMEM = "April";
+const char monthStr5[] PROGMEM = "May";
+const char monthStr6[] PROGMEM = "June";
+const char monthStr7[] PROGMEM = "July";
+const char monthStr8[] PROGMEM = "August";
+const char monthStr9[] PROGMEM = "September";
+const char monthStr10[] PROGMEM = "October";
+const char monthStr11[] PROGMEM = "November";
+const char monthStr12[] PROGMEM = "December";
+
 
 const PROGMEM char * const PROGMEM monthNames_P[] =
 {
@@ -48,7 +63,7 @@ const PROGMEM char * const PROGMEM monthNames_P[] =
     monthStr7,monthStr8,monthStr9,monthStr10,monthStr11,monthStr12
 };
 
-const char monthShortNames_P[] PROGMEM = "JanFebMarAprMayJunJulAugSepOctNovDecErr";
+const char monthShortNames_P[] PROGMEM = "ErrJanFebMarAprMayJunJulAugSepOctNovDec";
 
 const char dayStr0[] PROGMEM = "Sunday";
 const char dayStr1[] PROGMEM = "Monday";

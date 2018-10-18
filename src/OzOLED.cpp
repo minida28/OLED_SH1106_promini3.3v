@@ -858,7 +858,7 @@ void OzOLED::drawBitmap2(const byte *bitmaparray, byte X, byte Y, byte width, by
   sendCommand(0);    //Page start Address, range : 0-7d,(RESET = 0d)
   sendCommand(5);    //Page end Address, range : 0-7d,(RESET = 0d)
 
-  byte column = 0;
+  // byte column = 0;
   for (int i = 0; i < 27; i++)
   {
 
@@ -887,7 +887,7 @@ void OzOLED::slideOutBitmap2(const byte *bitmaparray, byte X, byte Y, byte width
   sendCommand(0);    //Page start Address, range : 0-7d,(RESET = 0d)
   sendCommand(5);    //Page end Address, range : 0-7d,(RESET = 0d)
 
-  byte column = 0;
+  // byte column = 0;
   for (int k = 0; k < 27; k++)
   {
     Serial.print("SLIDE-");
@@ -956,7 +956,7 @@ void OzOLED::drawLogo(const byte *bitmaparray, int startColumn, byte columnLengt
   sendCommand(startPage);                  //Page start Address, range : 0-7d,(RESET = 0d)
   sendCommand(startPage + pageLenght - 1); //Page end Address, range : 0-7d,(RESET = 0d)
 
-  byte column = 0;
+  // byte column = 0;
   if (startColumn >= 0 && startColumn + columnLength <= 128)
   {
     //Serial.println("A");
@@ -1013,6 +1013,71 @@ void OzOLED::drawLogo(const byte *bitmaparray, int startColumn, byte columnLengt
   }
 }
 
+// void OzOLED::drawFont8(const char *character, byte startColumn, byte startPage)
+// {
+//   // Please fill in font info!
+
+//   // #define fontName font5x8      //font name
+//   // #define fontWidth 5
+//   // #define fontHeight 8
+//   // #define startCharacter ' '    //32, 0x20
+//   // #define endCharacter 0x7F     //127, unknown char (0x7F)
+//   // #define spaceWidth 1
+
+// #define fontName BasicFont //font name
+// #define fontWidth 8
+// #define fontHeight 8
+// #define startCharacter ' ' //32, 0x20
+// #define endCharacter 0x7F  //127, unknown char (0x7F)
+// #define spaceWidth 0
+
+//   byte count = 0;
+//   byte pageLenght = fontHeight / 8;
+//   byte columnLength = fontWidth;
+//   byte numChar = strlen(character);
+
+//   uint8_t data = 0;
+//   uint16_t color = 0;
+
+//   if (color)
+//     mask = ~mask;
+
+//   setCursorXY(startColumn, startPage);
+
+//   //send data to display
+//   while (character[count] && count < numChar)
+//   {
+//     for (byte i = 0; i < (columnLength * pageLenght); i++)
+//     {
+//       // if character is not "0-9" or ':'
+//       if (character[count] < startCharacter || character[count] > endCharacter)
+//         data = 0;
+//       else
+//         data = pgm_read_byte(&fontName[character[count] - startCharacter][i]);
+
+//       data = data ^ mask;
+//       sendData(data);
+//     }
+
+//     count++;
+
+//     //add space between character
+//     data = 0;
+//     data = data ^ mask;
+//     if (spaceWidth > 0 && count < numChar)
+//     {
+//       for (byte i = 0; i < spaceWidth; i++)
+//       {
+//         for (byte j = 0; j < pageLenght; j++)
+//         {
+
+//           sendData(data);
+//         }
+//       }
+//     }
+//   }
+// }
+
 void OzOLED::drawFont8(const char *character, byte startColumn, byte startPage)
 {
   // Please fill in font info!
@@ -1036,15 +1101,6 @@ void OzOLED::drawFont8(const char *character, byte startColumn, byte startPage)
   byte columnLength = fontWidth;
   byte numChar = strlen(character);
 
-  //  // set initial cursor position
-  //  setVerticalMode();                                                            //Set to Vertical Memory Addressing Mode
-  //  sendCommand(0x21);                                                            //Set Column Address
-  //  sendCommand(startColumn);                                                     //Column start address, range : 0-127d,(RESET=0d)
-  //  sendCommand(startColumn + numChar * columnLength + (numChar - 1)*spaceWidth); //Column end address, range : 0-127d,(RESET=0d)
-  //  sendCommand(0x22);                                                            //Set Page Address
-  //  sendCommand(startPage);                                                       //Page start Address, range : 0-7d,(RESET = 0d)
-  //  sendCommand(startPage + pageLenght - 1);                                      //Page end Address, range : 0-7d,(RESET = 0d)
-
   uint8_t data = 0;
   uint16_t color = 0;
 
@@ -1065,7 +1121,15 @@ void OzOLED::drawFont8(const char *character, byte startColumn, byte startPage)
         data = pgm_read_byte(&fontName[character[count] - startCharacter][i]);
 
       data = data ^ mask;
-      sendData(data);
+
+      if (startColumn < 0 || startColumn > 127)
+      {
+        sendData(0);
+      }
+      else
+        sendData(data);
+
+      startColumn++;
     }
 
     count++;
@@ -1085,15 +1149,6 @@ void OzOLED::drawFont8(const char *character, byte startColumn, byte startPage)
       }
     }
   }
-
-  //  // reset cursor position
-  //  setHorizontalMode(); //Set to Vertical Memory Addressing Mode
-  //  sendCommand(0x21); //Set Column Address
-  //  sendCommand(0); //Column start address, range : 0-127d,(RESET=0d)
-  //  sendCommand(127); //Column end address, range : 0-127d,(RESET=0d)
-  //  sendCommand(0x22); //Set Page Address
-  //  sendCommand(0); //Page start Address, range : 0-7d,(RESET = 0d)
-  //  sendCommand(7); //Page end Address, range : 0-7d,(RESET = 0d)
 }
 
 void OzOLED::drawFont16(const char *number, byte numChar, byte startColumn, byte columnLength, byte startPage, byte pageLenght)
@@ -1101,9 +1156,9 @@ void OzOLED::drawFont16(const char *number, byte numChar, byte startColumn, byte
   // number pixels: 18 x 32
 
   // Y - page
-  byte column = 0;
+  // byte column = 0;
   byte count = 0;
-  byte row = 0;
+  // byte row = 0;
 
   setVerticalMode();                       //Set to Vertical Memory Addressing Mode
   sendCommand(0x21);                       //Set Column Address
@@ -1197,7 +1252,7 @@ void OzOLED::drawLogo2(const char *number, byte numChar, byte startColumn, byte 
   // Y - page
   byte column = 0;
   byte count = 0;
-  byte row = 0;
+  // byte row = 0;
 
   while (number[count] && count < numChar)
   {
@@ -1320,7 +1375,7 @@ void OzOLED::eraseLogo(int startColumn, byte columnLength, int startPage, byte p
   sendCommand(startPage);                  //Page start Address, range : 0-7d,(RESET = 0d)
   sendCommand(startPage + pageLenght - 1); //Page end Address, range : 0-7d,(RESET = 0d)
 
-  byte column = 0;
+  // byte column = 0;
   if (startColumn >= 0 && startColumn + columnLength <= 128)
   {
     for (int i = 0; i < columnLength; i++)
@@ -1427,8 +1482,10 @@ void OzOLED::string(const char *s,
                     const boolean inv)
 {
   char c;
-  while (c = *s++)
+  while ((c = *s++))
+  {
     letter(c, inv);
+  }
 } // end of I2C_graphical_LCD_display::string
 
 // =================== High Level ===========================
@@ -1893,8 +1950,9 @@ void OzOLED::clearDisplayAdafruit(void)
 
 void OzOLED::setInverseDisplayColor(bool i = false)
 {
-    mask = 0;
-    if (i) {
-      mask = ~mask;
-    }
+  mask = 0;
+  if (i)
+  {
+    mask = ~mask;
+  }
 }

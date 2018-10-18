@@ -3,7 +3,7 @@
 
 #include <Arduino.h>
 // #include "TinyGPS++.h"
-// #include <NMEAGPS.h>
+#include <NMEAGPS.h>
 // #include <GPSport.h>
 // #include <Streamers.h>
 // #include <NeoTeeStream.h>
@@ -108,7 +108,8 @@ const char disableVTG[] PROGMEM = "PUBX,40,VTG,0,0,0,0,0,0";
 
 
 // extern TinyGPSPlus gps;
-// extern gps_fix fix;                           // This holds on to the latest values
+extern NMEAGPS gps; // This parses the GPS characters
+extern gps_fix fix;                           // This holds on to the latest values
 extern uint8_t LastSentenceInInterval; // storage for the run-time selection
 
 //  Use NeoTee to echo the NMEA text commands to the Serial Monitor window
@@ -122,25 +123,25 @@ extern bool echoing;
 extern bool tracing;
 
 // extern bool validGPSstatusFlag;
-extern bool validGPSsatellitesFlag;
-extern bool validGPStimeFlag;
-extern bool validGPSdateFlag;
-extern bool validGPSlocationFlag;
-extern bool validGPSaltitudeFlag;
-extern bool validGPSspeedFlag;
+// extern bool validGPSsatellitesFlag;
+// extern bool validGPStimeFlag;
+// extern bool validGPSdateFlag;
+// extern bool validGPSlocationFlag;
+// extern bool validGPSaltitudeFlag;
+// extern bool validGPSspeedFlag;
 extern bool parseGPScompleted;
 
 extern uint32_t GPStimestamp;
 
 void sendUBX(const unsigned char *progmemBytes, size_t len);
 void changeBaud(const char *textCommand, unsigned long baud);
-extern uint8_t GPSfixStatus;
-extern uint8_t GPSsatellites;
+// extern uint8_t GPSfixStatus;
+// extern uint8_t GPSsatellites;
 // uint8_t GPSSatellitesCount();
-extern double GPSlatitude;
-extern double GPSlongitude;
+// extern double GPSlatitude;
+// extern double GPSlongitude;
 // extern double GPSaltitude;
-extern double GPSspeedKph;
+// extern double GPSspeedKph;
 extern double distanceKm;
 // void doSomeWork();
 void requestSync();

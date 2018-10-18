@@ -26,63 +26,77 @@ void x_tone(uint8_t pin, uint16_t freq)
   analogWrite(pin, 512);
 }
 
+// void buzzer(uint8_t pinBuzzer, uint16_t duty)
+// {
+//   if (alarmState == HIGH)
+//   {
+//     static byte buzzerState;
+
+//     unsigned long timeBuzzerState1 = 100;
+//     unsigned long timeBuzzerState2 = 100;
+//     unsigned long timeBuzzerState3 = 100;
+//     unsigned long timeBuzzerState4 = 100;
+//     // unsigned long timeBuzzerON = 50;
+//     unsigned long timeBuzzerOFF = 1000 - 4 * 100;
+
+//     //    int freq_0 = 4435; //2637
+//     //    int freq_1 = 5274; //2217
+//     unsigned int freq_0 = 2217; //4699
+//     unsigned int freq_1 = 2637; //5588
+
+//     static unsigned long previousMillisBuzzer;
+
+//     if (buzzerState == 0 && millis() - previousMillisBuzzer >= timeBuzzerOFF)
+//     {
+//       buzzerState = 1;                 // Update the state
+//       tone(pinBuzzer, freq_1);         // Turn on Solenoid Valve
+//       previousMillisBuzzer = millis(); // Remember the time
+//       //Serial.println(buzzerState);
+//     }
+//     if (buzzerState == 1 && millis() - previousMillisBuzzer >= timeBuzzerState1)
+//     {
+//       buzzerState = 2;                 // Update the state
+//       tone(pinBuzzer, freq_0);         // Turn on Solenoid Valve
+//       previousMillisBuzzer = millis(); // Remember the time
+//       //Serial.println(buzzerState);
+//     }
+//     if (buzzerState == 2 && millis() - previousMillisBuzzer >= timeBuzzerState2)
+//     {
+//       buzzerState = 3;                 // Update the state
+//       tone(pinBuzzer, freq_1);         // Turn on Solenoid Valve
+//       previousMillisBuzzer = millis(); // Remember the time
+//       //Serial.println(buzzerState);
+//     }
+//     if (buzzerState == 3 && millis() - previousMillisBuzzer >= timeBuzzerState3)
+//     {
+//       buzzerState = 4;                 // Update the state
+//       tone(pinBuzzer, freq_0);         // Turn on Solenoid Valve
+//       previousMillisBuzzer = millis(); // Remember the time
+//       //Serial.println(buzzerState);
+//     }
+//     if (buzzerState == 4 && millis() - previousMillisBuzzer >= timeBuzzerState4)
+//     {
+//       buzzerState = 0;                 // Update the state
+//       noTone(pinBuzzer);               // Turn on Solenoid Valve
+//       previousMillisBuzzer = millis(); // Remember the time
+//       //Serial.println(buzzerState);
+//       alarmState = LOW;
+//     }
+//   }
+// }
+
 void buzzer(uint8_t pinBuzzer, uint16_t duty)
 {
-  if (alarmState == HIGH)
-  {
-    static byte buzzerState;
+  uint16_t freq_0 = 2217; //4699
+  uint16_t freq_1 = 2637; //5588
 
-    unsigned long timeBuzzerState1 = 100;
-    unsigned long timeBuzzerState2 = 100;
-    unsigned long timeBuzzerState3 = 100;
-    unsigned long timeBuzzerState4 = 100;
-    // unsigned long timeBuzzerON = 50;
-    unsigned long timeBuzzerOFF = 1000 - 4 * 100;
-
-    //    int freq_0 = 4435; //2637
-    //    int freq_1 = 5274; //2217
-    unsigned int freq_0 = 2217; //4699
-    unsigned int freq_1 = 2637; //5588
-
-    static unsigned long previousMillisBuzzer;
-
-    if (buzzerState == 0 && millis() - previousMillisBuzzer >= timeBuzzerOFF)
-    {
-      buzzerState = 1;                 // Update the state
-      tone(pinBuzzer, freq_1);         // Turn on Solenoid Valve
-      previousMillisBuzzer = millis(); // Remember the time
-      //Serial.println(buzzerState);
-    }
-    if (buzzerState == 1 && millis() - previousMillisBuzzer >= timeBuzzerState1)
-    {
-      buzzerState = 2;                 // Update the state
-      tone(pinBuzzer, freq_0);         // Turn on Solenoid Valve
-      previousMillisBuzzer = millis(); // Remember the time
-      //Serial.println(buzzerState);
-    }
-    if (buzzerState == 2 && millis() - previousMillisBuzzer >= timeBuzzerState2)
-    {
-      buzzerState = 3;                 // Update the state
-      tone(pinBuzzer, freq_1);         // Turn on Solenoid Valve
-      previousMillisBuzzer = millis(); // Remember the time
-      //Serial.println(buzzerState);
-    }
-    if (buzzerState == 3 && millis() - previousMillisBuzzer >= timeBuzzerState3)
-    {
-      buzzerState = 4;                 // Update the state
-      tone(pinBuzzer, freq_0);         // Turn on Solenoid Valve
-      previousMillisBuzzer = millis(); // Remember the time
-      //Serial.println(buzzerState);
-    }
-    if (buzzerState == 4 && millis() - previousMillisBuzzer >= timeBuzzerState4)
-    {
-      buzzerState = 0;                 // Update the state
-      noTone(pinBuzzer);               // Turn on Solenoid Valve
-      previousMillisBuzzer = millis(); // Remember the time
-      //Serial.println(buzzerState);
-      alarmState = LOW;
-    }
-  }
+  tone(pinBuzzer, freq_1);
+  delay(100);
+  tone(pinBuzzer, freq_0);
+  delay(100);
+  tone(pinBuzzer, freq_1);
+  delay(100);
+  tone(pinBuzzer, freq_0, 100);
 }
 
 //void buzzer(uint8_t pinBuzzer, uint16_t duty)
@@ -194,9 +208,6 @@ void Tone0(uint8_t _buzzerPin, uint16_t freq, uint16_t _duration, bool _duration
 
 void Tone1(uint8_t pinBuzzer, uint16_t duty)
 {
-  if (tone1)
-  {
-
     unsigned int freq = 4000;
 
     tone(pinBuzzer, freq);
@@ -210,25 +221,6 @@ void Tone1(uint8_t pinBuzzer, uint16_t duty)
     tone(pinBuzzer, freq);
     delay(50);
     noTone(pinBuzzer);
-
-    //    analogWriteFreq(loudestFreq);
-    //
-    //    analogWrite(pinBuzzer, loudestDuty);
-    //    delay(80);
-    //    noTone(pinBuzzer);
-    //    delay(75);
-    //    analogWrite(pinBuzzer, loudestDuty);
-    //    delay(50);
-    //    noTone(pinBuzzer);
-    //    delay(25);
-    //    analogWrite(pinBuzzer, loudestDuty);
-    //    delay(50);
-    //    noTone(pinBuzzer);
-    //
-    //    analogWriteFreq(ANALOGWRITE_OPERATING_FREQUENCY);
-
-    tone1 = false;
-  }
 }
 
 //void Tone10(uint8_t pin, uint16_t duration)

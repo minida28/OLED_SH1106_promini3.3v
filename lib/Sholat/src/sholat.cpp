@@ -80,10 +80,11 @@ void PrayerTimes::get_prayer_times(int year, int month, int day, double _latitud
 }
 
 /* return prayer times for a given date */
-void PrayerTimes::get_prayer_times(time_t date, double latitude, double longitude, double timezone, double times[])
+void PrayerTimes::get_prayer_times(unsigned long date, double latitude, double longitude, double timezone, double times[])
 {
-  tm *t = localtime(&date);
-  get_prayer_times(1900 + t->tm_year, t->tm_mon + 1, t->tm_mday, latitude, longitude, timezone, times);
+  RtcDateTime tm;
+  tm = RtcDateTime(date);
+  get_prayer_times(tm.Year(), tm.Month(), tm.Day(), latitude, longitude, timezone, times);
 }
 
 /* set the calculation method  */
@@ -168,98 +169,98 @@ void PrayerTimes::set_isha_minutes(double minutes)
 //}
 
 /* convert float hours to 24h format */
-const char *PrayerTimes::float_time_to_time24(double time)
-{
-  if (isnan(time))
-    return nullptr; //return NULL
-  uint8_t hours, minutes;
-  get_float_time_parts(time, hours, minutes);
-  static char time24[6];
-  const char *ptr = two_digits_format(hours);
-  strlcpy(time24, ptr, sizeof(time24));
-  strcat(time24, ":");
-  ptr = two_digits_format(minutes);
-  strcat(time24, ptr);
-  return time24;
-}
+// const char *PrayerTimes::float_time_to_time24(double time)
+// {
+//   if (isnan(time))
+//     return nullptr; //return NULL
+//   uint8_t hours, minutes;
+//   get_float_time_parts(time, hours, minutes);
+//   static char time24[6];
+//   const char *ptr = two_digits_format(hours);
+//   strlcpy(time24, ptr, sizeof(time24));
+//   strcat(time24, ":");
+//   ptr = two_digits_format(minutes);
+//   strcat(time24, ptr);
+//   return time24;
+// }
 
 /* convert float hours to 12h format */
-const char *PrayerTimes::float_time_to_time12(double time, bool no_suffix)
-{
-  if (isnan(time))
-    return nullptr; // or return NULL;
-  uint8_t hours, minutes;
-  get_float_time_parts(time, hours, minutes);
-  const char *suffix = hours >= 12 ? " PM" : " AM";
-  hours = (hours + 12 - 1) % 12 + 1;
-  //const char* ptrMinutes = two_digits_format(minutes);
-  const char *ptrHours = two_digits_format(hours);
-  const char *ptrMinutes = two_digits_format(minutes);
-  static char time12[10];
-  strlcpy(time12, ptrHours, sizeof(time12));
-  strcat(time12, ":");
-  strcat(time12, ptrMinutes);
+// const char *PrayerTimes::float_time_to_time12(double time, bool no_suffix)
+// {
+//   if (isnan(time))
+//     return nullptr; // or return NULL;
+//   uint8_t hours, minutes;
+//   get_float_time_parts(time, hours, minutes);
+//   const char *suffix = hours >= 12 ? " PM" : " AM";
+//   hours = (hours + 12 - 1) % 12 + 1;
+//   //const char* ptrMinutes = two_digits_format(minutes);
+//   const char *ptrHours = two_digits_format(hours);
+//   const char *ptrMinutes = two_digits_format(minutes);
+//   static char time12[10];
+//   strlcpy(time12, ptrHours, sizeof(time12));
+//   strcat(time12, ":");
+//   strcat(time12, ptrMinutes);
 
-  if (no_suffix)
-  {
-    return time12;
-  }
-  else
-  {
-    strcat(time12, suffix);
-    return time12;
-  }
-  //return int_to_string(hours) + ':' + (String)ptrMinutes + (no_suffix ? "" : suffix);
-}
+//   if (no_suffix)
+//   {
+//     return time12;
+//   }
+//   else
+//   {
+//     strcat(time12, suffix);
+//     return time12;
+//   }
+//   //return int_to_string(hours) + ':' + (String)ptrMinutes + (no_suffix ? "" : suffix);
+// }
 
 /* convert float hours to 12h format with no suffix */
-const char *PrayerTimes::float_time_to_time12ns(double time)
-{
-  return float_time_to_time12(time, true);
-}
+// const char *PrayerTimes::float_time_to_time12ns(double time)
+// {
+//   return float_time_to_time12(time, true);
+// }
 
 /* ---------------------- Time-Zone Functions ----------------------- */
 
 /* compute local time-zone for a specific date */
-double PrayerTimes::get_effective_timezone(time_t local_time)
-{
-  tm *tmp = localtime(&local_time);
-  tmp->tm_isdst = 0;
-  time_t local = mktime(tmp);
-  tmp = gmtime(&local_time);
-  tmp->tm_isdst = 0;
-  time_t gmt = mktime(tmp);
-  return (local - gmt) / 3600.0;
-}
+// double PrayerTimes::get_effective_timezone(unsigned long local_time)
+// {
+//   tm *tmp = localtime(&local_time);
+//   tmp->tm_isdst = 0;
+//   time_t local = mktime(tmp);
+//   tmp = gmtime(&local_time);
+//   tmp->tm_isdst = 0;
+//   time_t gmt = mktime(tmp);
+//   return (local - gmt) / 3600.0;
+// }
 
 /* compute local time-zone for a specific date */
-double PrayerTimes::get_effective_timezone(int year, int month, int day)
-{
-  tm date = {0};
-  date.tm_year = year - 1900;
-  date.tm_mon = month - 1;
-  date.tm_mday = day;
-  date.tm_isdst = -1;           // determine it yourself from system
-  time_t local = mktime(&date); // seconds since midnight Jan 1, 1970
-  return get_effective_timezone(local);
-}
+// double PrayerTimes::get_effective_timezone(int year, int month, int day)
+// {
+//   tm date = {0};
+//   date.tm_year = year - 1900;
+//   date.tm_mon = month - 1;
+//   date.tm_mday = day;
+//   date.tm_isdst = -1;           // determine it yourself from system
+//   unsigned long local = mktime(&date); // seconds since midnight Jan 1, 1970
+//   return get_effective_timezone(local);
+// }
 
 /* ---------------------- Misc Functions ----------------------- */
 
-const char *PrayerTimes::int_to_string(int num)
-{
-  static char tmp[3];
-  sprintf(tmp, "%02d", num);
-  return tmp;
-}
+// const char *PrayerTimes::int_to_string(int num)
+// {
+//   static char tmp[3];
+//   sprintf(tmp, "%02d", num);
+//   return tmp;
+// }
 
 /* add a leading 0 if necessary */
-const char *PrayerTimes::two_digits_format(int num)
-{
-  static char tmp[3];
-  sprintf(tmp, "%02d", num);
-  return tmp;
-}
+// const char *PrayerTimes::two_digits_format(int num)
+// {
+//   static char tmp[3];
+//   sprintf(tmp, "%02d", num);
+//   return tmp;
+// }
 
 /* ---------------------- Julian Date Functions ----------------------- */
 
@@ -277,7 +278,6 @@ double PrayerTimes::get_julian_date(int year, int month, int day)
 
   return floor(365.25 * (year + 4716)) + floor(30.6001 * (month + 1)) + day + b - 1524.5;
 }
-
 
 /* ---------------------- Compute Prayer Times ----------------------- */
 
@@ -459,7 +459,7 @@ DoublePair PrayerTimes::sun_position(double jd)
   ra = fix_hour(ra);
   double eq_t = q / 15.0 - ra;
 
-  DoublePair dp={dd, eq_t};
+  DoublePair dp = {dd, eq_t};
 
   return dp;
 }
